@@ -7,6 +7,280 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 
+### Features
+
+- Updated the dictionary with the [January 2025](https://github.com/crate-ci/typos/issues/1200) changes
+
+## [1.29.5] - 2025-01-30
+
+### Internal
+
+- Update a dependency
+
+## [1.29.4] - 2025-01-03
+
+## [1.29.3] - 2025-01-02
+
+## [1.29.2] - 2025-01-02
+
+## [1.29.1] - 2025-01-02
+
+### Fixes
+
+- Don't correct `deriver`
+
+## [1.29.0] - 2024-12-31
+
+### Features
+
+- Updated the dictionary with the [December 2024](https://github.com/crate-ci/typos/issues/1156) changes
+
+### Performance
+
+- Sped up dictionary lookups
+
+## [1.28.4] - 2024-12-16
+
+### Features
+
+- `--format sarif` support
+
+## [1.28.3] - 2024-12-12
+
+### Fixes
+
+- Correct `imlementations`, `includs`, `qurorum`, `transatctions`, `trasnactions`, `validasted`, `vview`
+
+## [1.28.2] - 2024-12-02
+
+### Fixes
+
+- Don't correct `parametrize` variants
+
+## [1.28.1] - 2024-11-26
+
+### Fixes
+
+- Add back in `lock` file types accidentally removed in 1.28 (`go.sum`, `requirements.txt`)
+
+## [1.28.0] - 2024-11-25
+
+### Features
+
+- Updated the dictionary with the [November 2024](https://github.com/crate-ci/typos/issues/1139) changes
+- Add many new types and file extensions to the `--type-list`, including ada, alire, bat, candid, carp, cml, devicetree, dita, dockercompose, grpbuild, graphql, hare, lean, meson, prolog, raku, reasonml, rescript, solidity, svelte, usd, v, wgsl
+
+## [1.27.3] - 2024-11-08
+
+### Fixes
+
+- Don't correct `alloced`
+- Don't correct `requestor`, a more domain specific variant of `requester`
+
+## [1.27.2] - 2024-11-06
+
+### Fixes
+
+- Correct `fand`
+
+## [1.27.1] - 2024-11-06
+
+### Fixes
+
+- Correct `alingment` as `alignment`, rather than `alinement`
+
+## [1.27.0] - 2024-11-01
+
+### Features
+
+- Updated the dictionary with the [October 2024](https://github.com/crate-ci/typos/issues/1106) changes
+
+## [1.26.8] - 2024-10-24
+
+## [1.26.7] - 2024-10-24
+
+## [1.26.6] - 2024-10-24
+
+## [1.26.5] - 2024-10-24
+
+## [1.26.4] - 2024-10-24
+
+## [1.26.3] - 2024-10-24
+
+### Fixes
+
+- Accept `additionals`
+
+## [1.26.2] - 2024-10-24
+
+### Fixes
+
+- Accept `tesselate` variants
+
+## [1.26.1] - 2024-10-23
+
+### Fixes
+
+- Respect `--force-exclude` for binary files
+
+## [1.26.0] - 2024-10-07
+
+### Compatibility
+
+- *(pre-commit)* Requires 3.2+
+
+### Fixes
+
+- *(pre-commit)* Resolve deprecations in 4.0 about deprecated stage names
+
+## [1.25.0] - 2024-10-01
+
+### Fixes
+
+- Updated the dictionary with the [September 2024](https://github.com/crate-ci/typos/issues/1107) changes
+
+## [1.24.6] - 2024-09-16
+
+### Fixes
+
+- Respect negation (`!`) in `extend-exclude`
+
+## [1.24.5] - 2024-09-04
+
+### Features
+
+- *(action)* Support windows
+
+## [1.24.4] - 2024-09-03
+
+### Fixes
+
+- Offer a correction for `grather`
+
+## [1.24.3] - 2024-08-30
+
+### Fixes
+
+- Updated the dictionary with the [August 2024](https://github.com/crate-ci/typos/issues/1069) changes
+
+## [1.24.2] - 2024-08-30
+
+### Performance
+
+- Cap unbounded parsing to avoid worst case performance (hit with test data)
+
+## [1.24.1] - 2024-08-23
+
+### Fixes
+
+- Remove unverified varcon (locale data) entries
+
+## [1.24.0] - 2024-08-23
+
+### Features
+
+- Update varcon (locale data) to version 2020.12.07
+
+## [1.23.7] - 2024-08-22
+
+### Fixes
+
+- *(config)* Respect `--locale` / `default.locale` again after it was broken in 1.16.24
+
+## [1.23.6] - 2024-07-31
+
+### Fixes
+
+- Updated the dictionary with the [July 2024](https://github.com/crate-ci/typos/issues/1051) changes
+
+## [1.23.5] - 2024-07-25
+
+### Features
+
+- *(config)* Store config in `Cargo.toml`
+
+## [1.23.4] - 2024-07-25
+
+### Fixes
+
+- Don't correct `countr_one` in C++
+
+## [1.23.3] - 2024-07-22
+
+### Fixes
+
+- Fix `Dockerfile`
+
+## [1.23.2] - 2024-07-10
+
+### Features
+
+- Automatically ignore JWT tokens
+
+## [1.23.1] - 2024-07-05
+
+### Fixes
+
+- Add missing [June 2024](https://github.com/crate-ci/typos/issues/1024) changes
+
+## [1.23.0] - 2024-07-05
+
+### Fixes
+
+- Updated the dictionary with the [June 2024](https://github.com/crate-ci/typos/issues/1024) changes
+
+## [1.22.9] - 2024-06-22
+
+### Fixes
+
+- Stop correcting `reoccurrence`
+
+## [1.22.8] - 2024-06-21
+
+### Features
+
+- *(action)* Add Arm, Mac support
+
+## [1.22.7] - 2024-06-12
+
+### Fixes
+
+- Remove Linux arm64 binary support
+
+## [1.22.6] - 2024-06-12
+
+## [1.22.5] - 2024-06-12
+
+### Features
+
+- Linux arm64 binaries
+
+## [1.22.4] - 2024-06-10
+
+### Fixes
+
+- Correct adventerous as adventurous instead of adventures
+- Correct manifestion as manifestation instead of manifesto
+- Correct manifestior as manifestation instead of manifesto
+
+## [1.22.3] - 2024-06-07
+
+### Fixes
+
+- Don't correct `arbitral`
+
+## [1.22.2] - 2024-06-07
+
+## [1.22.1] - 2024-06-05
+
+- In golang, `flate` is a valid term from the stdlib
+
+## [1.22.0] - 2024-06-03
+
+### Fixes
+
+- Updated the dictionary with the [May 2024](https://github.com/crate-ci/typos/issues/1007) changes
+
 ## [1.21.0] - 2024-04-30
 
 ### Fixes
@@ -69,7 +343,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Don't correct `ang` ('angle' abbreviation)
 - Don't correct `dur` ('duration' abbreviation)
-- Don't correct `lst` (used in place of 'list' when its a built-in)
+- Don't correct `lst` (used in place of 'list' when it's a built-in)
 - Don't correct `GUID` acronym
 - Don't correct `IIS` acronym
 - Don't correct `IME` acronym
@@ -595,7 +869,7 @@ Publish to PyPI (first attempt)
 
 ### Fixes
 
-- Don't correct `nilable` as its used by the Ruby community
+- Don't correct `nilable` as it's used by the Ruby community
 
 ## [1.13.3] - 2022-12-02
 
@@ -987,7 +1261,7 @@ Note: MSRV is now 1.54
 #### Performance
 
 - Due to new literal detection, finding identifiers is takes 10x longer.
-  Combined with word splitting, its only takes 3x longer.  The majority of the
+  Combined with word splitting, it only takes 3x longer.  The majority of the
   time is spent in dictionary lookups, so we don't expect this to have too much impact in the end.
 
 ## [1.0.10] - 2021-06-28
@@ -1135,7 +1409,57 @@ Note: MSRV is now 1.54
 *   Only do hex check if digits are in identifiers ([68cd36d0](https://github.com/crate-ci/typos/commit/68cd36d0de90226dbc9d31c2ce6d8bf6b69adb5c))
 
 <!-- next-url -->
-[Unreleased]: https://github.com/crate-ci/typos/compare/v1.21.0...HEAD
+[Unreleased]: https://github.com/crate-ci/typos/compare/v1.29.5...HEAD
+[1.29.5]: https://github.com/crate-ci/typos/compare/v1.29.4...v1.29.5
+[1.29.4]: https://github.com/crate-ci/typos/compare/v1.29.3...v1.29.4
+[1.29.3]: https://github.com/crate-ci/typos/compare/v1.29.2...v1.29.3
+[1.29.2]: https://github.com/crate-ci/typos/compare/v1.29.1...v1.29.2
+[1.29.1]: https://github.com/crate-ci/typos/compare/v1.29.0...v1.29.1
+[1.29.0]: https://github.com/crate-ci/typos/compare/v1.28.4...v1.29.0
+[1.28.4]: https://github.com/crate-ci/typos/compare/v1.28.3...v1.28.4
+[1.28.3]: https://github.com/crate-ci/typos/compare/v1.28.2...v1.28.3
+[1.28.2]: https://github.com/crate-ci/typos/compare/v1.28.1...v1.28.2
+[1.28.1]: https://github.com/crate-ci/typos/compare/v1.28.0...v1.28.1
+[1.28.0]: https://github.com/crate-ci/typos/compare/v1.27.3...v1.28.0
+[1.27.3]: https://github.com/crate-ci/typos/compare/v1.27.2...v1.27.3
+[1.27.2]: https://github.com/crate-ci/typos/compare/v1.27.1...v1.27.2
+[1.27.1]: https://github.com/crate-ci/typos/compare/v1.27.0...v1.27.1
+[1.27.0]: https://github.com/crate-ci/typos/compare/v1.26.8...v1.27.0
+[1.26.8]: https://github.com/crate-ci/typos/compare/v1.26.7...v1.26.8
+[1.26.7]: https://github.com/crate-ci/typos/compare/v1.26.6...v1.26.7
+[1.26.6]: https://github.com/crate-ci/typos/compare/v1.26.5...v1.26.6
+[1.26.5]: https://github.com/crate-ci/typos/compare/v1.26.4...v1.26.5
+[1.26.4]: https://github.com/crate-ci/typos/compare/v1.26.3...v1.26.4
+[1.26.3]: https://github.com/crate-ci/typos/compare/v1.26.2...v1.26.3
+[1.26.2]: https://github.com/crate-ci/typos/compare/v1.26.1...v1.26.2
+[1.26.1]: https://github.com/crate-ci/typos/compare/v1.26.0...v1.26.1
+[1.26.0]: https://github.com/crate-ci/typos/compare/v1.25.0...v1.26.0
+[1.25.0]: https://github.com/crate-ci/typos/compare/v1.24.6...v1.25.0
+[1.24.6]: https://github.com/crate-ci/typos/compare/v1.24.5...v1.24.6
+[1.24.5]: https://github.com/crate-ci/typos/compare/v1.24.4...v1.24.5
+[1.24.4]: https://github.com/crate-ci/typos/compare/v1.24.3...v1.24.4
+[1.24.3]: https://github.com/crate-ci/typos/compare/v1.24.2...v1.24.3
+[1.24.2]: https://github.com/crate-ci/typos/compare/v1.24.1...v1.24.2
+[1.24.1]: https://github.com/crate-ci/typos/compare/v1.24.0...v1.24.1
+[1.24.0]: https://github.com/crate-ci/typos/compare/v1.23.7...v1.24.0
+[1.23.7]: https://github.com/crate-ci/typos/compare/v1.23.6...v1.23.7
+[1.23.6]: https://github.com/crate-ci/typos/compare/v1.23.5...v1.23.6
+[1.23.5]: https://github.com/crate-ci/typos/compare/v1.23.4...v1.23.5
+[1.23.4]: https://github.com/crate-ci/typos/compare/v1.23.3...v1.23.4
+[1.23.3]: https://github.com/crate-ci/typos/compare/v1.23.2...v1.23.3
+[1.23.2]: https://github.com/crate-ci/typos/compare/v1.23.1...v1.23.2
+[1.23.1]: https://github.com/crate-ci/typos/compare/v1.23.0...v1.23.1
+[1.23.0]: https://github.com/crate-ci/typos/compare/v1.22.9...v1.23.0
+[1.22.9]: https://github.com/crate-ci/typos/compare/v1.22.8...v1.22.9
+[1.22.8]: https://github.com/crate-ci/typos/compare/v1.22.7...v1.22.8
+[1.22.7]: https://github.com/crate-ci/typos/compare/v1.22.6...v1.22.7
+[1.22.6]: https://github.com/crate-ci/typos/compare/v1.22.5...v1.22.6
+[1.22.5]: https://github.com/crate-ci/typos/compare/v1.22.4...v1.22.5
+[1.22.4]: https://github.com/crate-ci/typos/compare/v1.22.3...v1.22.4
+[1.22.3]: https://github.com/crate-ci/typos/compare/v1.22.2...v1.22.3
+[1.22.2]: https://github.com/crate-ci/typos/compare/v1.22.1...v1.22.2
+[1.22.1]: https://github.com/crate-ci/typos/compare/v1.22.0...v1.22.1
+[1.22.0]: https://github.com/crate-ci/typos/compare/v1.21.0...v1.22.0
 [1.21.0]: https://github.com/crate-ci/typos/compare/v1.20.10...v1.21.0
 [1.20.10]: https://github.com/crate-ci/typos/compare/v1.20.9...v1.20.10
 [1.20.9]: https://github.com/crate-ci/typos/compare/v1.20.8...v1.20.9

@@ -7,7 +7,7 @@ fn codegen() {
 
     let content = String::from_utf8(content).unwrap();
     let content = codegenrs::rustfmt(&content, None).unwrap();
-    snapbox::assert_eq(snapbox::file!["../src/dict_codegen.rs"], content);
+    snapbox::assert_data_eq!(content, snapbox::file!["../src/dict_codegen.rs"].raw());
 }
 
 fn generate<W: std::io::Write>(file: &mut W) {
@@ -21,13 +21,12 @@ fn generate<W: std::io::Write>(file: &mut W) {
 
     let dict = parse_dict(DICT);
 
-    dictgen::generate_table(
-        file,
-        "WORD_DICTIONARY",
-        "&[&str]",
-        dict.map(|kv| (kv.0, format!("&{:?}", kv.1))),
-    )
-    .unwrap();
+    dictgen::DictGen::new()
+        .name("WORD_DICTIONARY")
+        .value_type("&[&str]")
+        .ordered_map()
+        .write(file, dict.map(|kv| (kv.0, format!("&{:?}", kv.1))))
+        .unwrap();
 }
 
 fn parse_dict(raw: &str) -> impl Iterator<Item = (&str, Vec<&str>)> {

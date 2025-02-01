@@ -9,7 +9,7 @@ fn codegen() {
 
     let content = String::from_utf8(content).unwrap();
     let content = codegenrs::rustfmt(&content, None).unwrap();
-    snapbox::assert_eq(snapbox::file!["../src/codegen.rs"], content);
+    snapbox::assert_data_eq!(content, snapbox::file!["../src/codegen.rs"].raw());
 }
 
 fn generate<W: std::io::Write>(file: &mut W) {
@@ -36,6 +36,8 @@ fn generate<W: std::io::Write>(file: &mut W) {
         cluster.infer();
         writeln!(file, "Cluster {{").unwrap();
         writeln!(file, "  header: {:?},", cluster.header).unwrap();
+        writeln!(file, "  verified: {:?},", cluster.verified).unwrap();
+        writeln!(file, "  level: {:?},", cluster.level).unwrap();
         writeln!(file, "  entries: &[").unwrap();
         for entry in &cluster.entries {
             writeln!(file, "  Entry {{").unwrap();
@@ -48,7 +50,7 @@ fn generate<W: std::io::Write>(file: &mut W) {
                     write!(file, "          Type {{").unwrap();
                     write!(file, "category: Category::{:?}, ", t.category).unwrap();
                     if let Some(tag) = t.tag {
-                        write!(file, "tag: Some(Tag::{:?}), ", tag).unwrap();
+                        write!(file, "tag: Some(Tag::{tag:?}), ").unwrap();
                     } else {
                         write!(file, "tag: {:?}, ", t.tag).unwrap();
                     }
@@ -60,7 +62,7 @@ fn generate<W: std::io::Write>(file: &mut W) {
             }
             writeln!(file, "  ],").unwrap();
             if let Some(pos) = entry.pos {
-                write!(file, "  pos: Some(Pos::{:?}),", pos).unwrap();
+                write!(file, "  pos: Some(Pos::{pos:?}),").unwrap();
             } else {
                 write!(file, "  pos: {:?},", entry.pos).unwrap();
             }
@@ -77,7 +79,7 @@ fn generate<W: std::io::Write>(file: &mut W) {
         writeln!(file, "  ],").unwrap();
         writeln!(file, "  notes: &[").unwrap();
         for note in &cluster.notes {
-            writeln!(file, "    {:?},", note).unwrap();
+            writeln!(file, "    {note:?},").unwrap();
         }
         writeln!(file, "  ],").unwrap();
         writeln!(file, "  }},").unwrap();

@@ -8,6 +8,8 @@ mod report;
 
 use proc_exit::prelude::*;
 
+use typos_cli::report::Report;
+
 fn main() {
     human_panic::setup_panic!();
     let result = run();
@@ -187,6 +189,13 @@ fn run_checks(args: &args::Args) -> proc_exit::ExitResult {
         None => None,
     };
 
+    // HACK: Diff doesn't handle mixing content
+    let global_reporter = if args.diff {
+        Box::new(report::PrintSilent)
+    } else {
+        args.format.reporter()
+    };
+
     // Note: file_list and args.path are mutually exclusive, enforced by clap
     'path: for path in file_list.as_ref().unwrap_or(&args.path) {
         // Note paths are passed through stdin, `-` is treated like a normal path
@@ -241,37 +250,39 @@ fn run_checks(args: &args::Args) -> proc_exit::ExitResult {
             walk.sort_by_file_name(|a, b| a.cmp(b));
         }
         if !walk_policy.extend_exclude.is_empty() {
-            let mut overrides = ignore::overrides::OverrideBuilder::new(".");
+            let mut ignores = ignore::gitignore::GitignoreBuilder::new(".");
             for pattern in walk_policy.extend_exclude.iter() {
-                overrides
-                    .add(&format!("!{}", pattern))
+                ignores
+                    .add_line(None, pattern)
                     .with_code(proc_exit::sysexits::CONFIG_ERR)?;
             }
-            let overrides = overrides
-                .build()
-                .with_code(proc_exit::sysexits::CONFIG_ERR)?;
+            let ignores = ignores.build().with_code(proc_exit::sysexits::CONFIG_ERR)?;
             if args.force_exclude {
                 let mut ancestors = path.ancestors().collect::<Vec<_>>();
                 ancestors.reverse();
                 for path in ancestors {
-                    match overrides.matched(path, path.is_dir()) {
+                    match ignores.matched(path, path.is_dir()) {
                         ignore::Match::None => {}
                         ignore::Match::Ignore(_) => continue 'path,
                         ignore::Match::Whitelist(_) => break,
                     }
                 }
             }
-            walk.overrides(overrides);
+            walk.filter_entry(move |entry| {
+                let path = entry.path();
+                let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+                let matched = ignores.matched(path, is_dir);
+                log::debug!("match({path:?}, {is_dir}) == {matched:?}");
+                match matched {
+                    ignore::Match::None => true,
+                    ignore::Match::Ignore(_) => false,
+                    ignore::Match::Whitelist(_) => true,
+                }
+            });
         }
 
-        // HACK: Diff doesn't handle mixing content
-        let output_reporter = if args.diff {
-            Box::new(report::PrintSilent)
-        } else {
-            args.format.reporter()
-        };
-        let status_reporter = report::MessageStatus::new(output_reporter.as_ref());
-        let reporter: &dyn typos_cli::report::Report = &status_reporter;
+        let status_reporter = report::MessageStatus::new(global_reporter.as_ref());
+        let reporter: &dyn Report = &status_reporter;
 
         let selected_checks: &dyn typos_cli::file::FileChecker = if args.files {
             &typos_cli::file::FoundFiles
@@ -290,13 +301,20 @@ fn run_checks(args: &args::Args) -> proc_exit::ExitResult {
         };
 
         if single_threaded {
-            typos_cli::file::walk_path(walk.build(), selected_checks, &engine, reporter)
+            typos_cli::file::walk_path(
+                walk.build(),
+                selected_checks,
+                &engine,
+                reporter,
+                args.force_exclude,
+            )
         } else {
             typos_cli::file::walk_path_parallel(
                 walk.build_parallel(),
                 selected_checks,
                 &engine,
                 reporter,
+                args.force_exclude,
             )
         }
         .map_err(|e| {
@@ -316,6 +334,11 @@ fn run_checks(args: &args::Args) -> proc_exit::ExitResult {
         if status_reporter.errors_found() {
             errors_found = true;
         }
+    }
+
+    if let Err(err) = global_reporter.generate_final_result() {
+        errors_found = true;
+        log::error!("could not render end-report: {}", err);
     }
 
     if errors_found {

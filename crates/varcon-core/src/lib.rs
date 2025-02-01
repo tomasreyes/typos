@@ -12,7 +12,9 @@ pub use crate::parser::ClusterIter;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Cluster {
-    pub header: Option<String>,
+    pub header: String,
+    pub verified: bool,
+    pub level: usize,
     pub entries: Vec<Entry>,
     pub notes: Vec<String>,
 }
@@ -30,8 +32,8 @@ pub struct Entry {
     pub variants: Vec<Variant>,
     pub pos: Option<Pos>,
     pub archaic: bool,
-    pub note: bool,
     pub description: Option<String>,
+    pub note: Option<String>,
     pub comment: Option<String>,
 }
 
@@ -124,6 +126,9 @@ pub enum Pos {
     Verb = 0x02,
     Adjective = 0x04,
     Adverb = 0x08,
+    AdjectiveOrAdverb = 0x10,
+    Interjection = 0x20,
+    Preposition = 0x40,
 }
 
 #[cfg(feature = "flags")]

@@ -1,5 +1,13 @@
+use winnow::ascii::space1;
+use winnow::combinator::alt;
+use winnow::combinator::cut_err;
+use winnow::combinator::delimited;
+use winnow::combinator::opt;
+use winnow::combinator::preceded;
+use winnow::combinator::terminated;
 use winnow::combinator::trace;
 use winnow::prelude::*;
+use winnow::token::one_of;
 
 use crate::{Category, Cluster, Entry, Pos, Tag, Type, Variant};
 
@@ -14,7 +22,7 @@ impl<'i> ClusterIter<'i> {
     }
 }
 
-impl<'i> Iterator for ClusterIter<'i> {
+impl Iterator for ClusterIter<'_> {
     type Item = Cluster;
 
     fn next(&mut self) -> Option<Cluster> {
@@ -27,9 +35,13 @@ impl<'i> Iterator for ClusterIter<'i> {
 mod test_cluster_iter {
     use super::*;
 
+    use snapbox::assert_data_eq;
+    use snapbox::str;
+    use snapbox::ToDebug;
+
     #[test]
     fn test_single() {
-        let iter = ClusterIter::new(
+        let actual = ClusterIter::new(
             "# acknowledgment <verified> (level 35)
 A Cv: acknowledgment / Av B C: acknowledgement
 A Cv: acknowledgments / Av B C: acknowledgements
@@ -37,12 +49,171 @@ A Cv: acknowledgment's / Av B C: acknowledgement's
 
 ",
         );
-        assert_eq!(iter.count(), 1);
+        assert_data_eq!(
+            actual.collect::<Vec<_>>().to_debug(),
+            str![[r#"
+[
+    Cluster {
+        header: "acknowledgment ",
+        verified: true,
+        level: 35,
+        entries: [
+            Entry {
+                variants: [
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgment",
+                    },
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                            Type {
+                                category: BritishIse,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: None,
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgement",
+                    },
+                ],
+                pos: None,
+                archaic: false,
+                description: None,
+                note: None,
+                comment: None,
+            },
+            Entry {
+                variants: [
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgments",
+                    },
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                            Type {
+                                category: BritishIse,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: None,
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgements",
+                    },
+                ],
+                pos: None,
+                archaic: false,
+                description: None,
+                note: None,
+                comment: None,
+            },
+            Entry {
+                variants: [
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgment's",
+                    },
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                            Type {
+                                category: BritishIse,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: None,
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgement's",
+                    },
+                ],
+                pos: None,
+                archaic: false,
+                description: None,
+                note: None,
+                comment: None,
+            },
+        ],
+        notes: [],
+    },
+]
+
+"#]]
+        );
     }
 
     #[test]
     fn test_multiple() {
-        let iter = ClusterIter::new(
+        let actual = ClusterIter::new(
             "# acknowledgment <verified> (level 35)
 A Cv: acknowledgment / Av B C: acknowledgement
 A Cv: acknowledgments / Av B C: acknowledgements
@@ -55,7 +226,318 @@ A Cv: acknowledgment's / Av B C: acknowledgement's
 
 ",
         );
-        assert_eq!(iter.count(), 2);
+        assert_data_eq!(
+            actual.collect::<Vec<_>>().to_debug(),
+            str![[r#"
+[
+    Cluster {
+        header: "acknowledgment ",
+        verified: true,
+        level: 35,
+        entries: [
+            Entry {
+                variants: [
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgment",
+                    },
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                            Type {
+                                category: BritishIse,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: None,
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgement",
+                    },
+                ],
+                pos: None,
+                archaic: false,
+                description: None,
+                note: None,
+                comment: None,
+            },
+            Entry {
+                variants: [
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgments",
+                    },
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                            Type {
+                                category: BritishIse,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: None,
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgements",
+                    },
+                ],
+                pos: None,
+                archaic: false,
+                description: None,
+                note: None,
+                comment: None,
+            },
+            Entry {
+                variants: [
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgment's",
+                    },
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                            Type {
+                                category: BritishIse,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: None,
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgement's",
+                    },
+                ],
+                pos: None,
+                archaic: false,
+                description: None,
+                note: None,
+                comment: None,
+            },
+        ],
+        notes: [],
+    },
+    Cluster {
+        header: "acknowledgment ",
+        verified: true,
+        level: 35,
+        entries: [
+            Entry {
+                variants: [
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgment",
+                    },
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                            Type {
+                                category: BritishIse,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: None,
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgement",
+                    },
+                ],
+                pos: None,
+                archaic: false,
+                description: None,
+                note: None,
+                comment: None,
+            },
+            Entry {
+                variants: [
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgments",
+                    },
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                            Type {
+                                category: BritishIse,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: None,
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgements",
+                    },
+                ],
+                pos: None,
+                archaic: false,
+                description: None,
+                note: None,
+                comment: None,
+            },
+            Entry {
+                variants: [
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgment's",
+                    },
+                    Variant {
+                        types: [
+                            Type {
+                                category: American,
+                                tag: Some(
+                                    Variant,
+                                ),
+                                num: None,
+                            },
+                            Type {
+                                category: BritishIse,
+                                tag: None,
+                                num: None,
+                            },
+                            Type {
+                                category: Canadian,
+                                tag: None,
+                                num: None,
+                            },
+                        ],
+                        word: "acknowledgement's",
+                    },
+                ],
+                pos: None,
+                archaic: false,
+                description: None,
+                note: None,
+                comment: None,
+            },
+        ],
+        notes: [],
+    },
+]
+
+"#]]
+        );
     }
 }
 
@@ -64,35 +546,40 @@ impl Cluster {
         Self::parse_.parse(input).map_err(|_err| ParseError)
     }
 
-    fn parse_(input: &mut &str) -> PResult<Self, ()> {
+    fn parse_(input: &mut &str) -> ModalResult<Self, ()> {
         trace("cluster", move |input: &mut &str| {
             let header = (
                 "#",
                 winnow::ascii::space0,
-                winnow::ascii::till_line_ending,
+                winnow::token::take_till(1.., ('\r', '\n', '<', '(')),
+                winnow::ascii::space0,
+                opt(("<verified>", winnow::ascii::space0)),
+                delimited("(level ", winnow::ascii::digit1, ')').parse_to::<usize>(),
+                winnow::ascii::space0,
                 winnow::ascii::line_ending,
             );
-            let note = winnow::combinator::preceded(
+            let note = preceded(
                 ("##", winnow::ascii::space0),
-                winnow::combinator::terminated(
-                    winnow::ascii::till_line_ending,
-                    winnow::ascii::line_ending,
-                ),
+                terminated(winnow::ascii::till_line_ending, winnow::ascii::line_ending),
             );
             let mut cluster = (
-                winnow::combinator::opt(header),
+                header,
                 winnow::combinator::repeat(
                     1..,
-                    winnow::combinator::terminated(Entry::parse_, winnow::ascii::line_ending),
+                    terminated(Entry::parse_, winnow::ascii::line_ending),
                 ),
                 winnow::combinator::repeat(0.., note),
             );
             let (header, entries, notes): (_, _, Vec<_>) = cluster.parse_next(input)?;
 
-            let header = header.map(|s| s.2.to_owned());
+            let verified = header.4.is_some();
+            let level = header.5;
+            let header = header.2.to_owned();
             let notes = notes.into_iter().map(|s| s.to_owned()).collect();
             let c = Self {
                 header,
+                verified,
+                level,
                 entries,
                 notes,
             };
@@ -106,6 +593,10 @@ impl Cluster {
 mod test_cluster {
     use super::*;
 
+    use snapbox::assert_data_eq;
+    use snapbox::str;
+    use snapbox::ToDebug;
+
     #[test]
     fn test_basic() {
         let (input, actual) = Cluster::parse_
@@ -118,13 +609,171 @@ A Cv: acknowledgment's / Av B C: acknowledgement's
 ",
             )
             .unwrap();
-        assert_eq!(input, "\n");
-        assert_eq!(
-            actual.header,
-            Some("acknowledgment <verified> (level 35)".to_owned())
+        assert_data_eq!(
+            input,
+            str![[r#"
+
+
+"#]]
         );
-        assert_eq!(actual.entries.len(), 3);
-        assert_eq!(actual.notes.len(), 0);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Cluster {
+    header: "acknowledgment ",
+    verified: true,
+    level: 35,
+    entries: [
+        Entry {
+            variants: [
+                Variant {
+                    types: [
+                        Type {
+                            category: American,
+                            tag: None,
+                            num: None,
+                        },
+                        Type {
+                            category: Canadian,
+                            tag: Some(
+                                Variant,
+                            ),
+                            num: None,
+                        },
+                    ],
+                    word: "acknowledgment",
+                },
+                Variant {
+                    types: [
+                        Type {
+                            category: American,
+                            tag: Some(
+                                Variant,
+                            ),
+                            num: None,
+                        },
+                        Type {
+                            category: BritishIse,
+                            tag: None,
+                            num: None,
+                        },
+                        Type {
+                            category: Canadian,
+                            tag: None,
+                            num: None,
+                        },
+                    ],
+                    word: "acknowledgement",
+                },
+            ],
+            pos: None,
+            archaic: false,
+            description: None,
+            note: None,
+            comment: None,
+        },
+        Entry {
+            variants: [
+                Variant {
+                    types: [
+                        Type {
+                            category: American,
+                            tag: None,
+                            num: None,
+                        },
+                        Type {
+                            category: Canadian,
+                            tag: Some(
+                                Variant,
+                            ),
+                            num: None,
+                        },
+                    ],
+                    word: "acknowledgments",
+                },
+                Variant {
+                    types: [
+                        Type {
+                            category: American,
+                            tag: Some(
+                                Variant,
+                            ),
+                            num: None,
+                        },
+                        Type {
+                            category: BritishIse,
+                            tag: None,
+                            num: None,
+                        },
+                        Type {
+                            category: Canadian,
+                            tag: None,
+                            num: None,
+                        },
+                    ],
+                    word: "acknowledgements",
+                },
+            ],
+            pos: None,
+            archaic: false,
+            description: None,
+            note: None,
+            comment: None,
+        },
+        Entry {
+            variants: [
+                Variant {
+                    types: [
+                        Type {
+                            category: American,
+                            tag: None,
+                            num: None,
+                        },
+                        Type {
+                            category: Canadian,
+                            tag: Some(
+                                Variant,
+                            ),
+                            num: None,
+                        },
+                    ],
+                    word: "acknowledgment's",
+                },
+                Variant {
+                    types: [
+                        Type {
+                            category: American,
+                            tag: Some(
+                                Variant,
+                            ),
+                            num: None,
+                        },
+                        Type {
+                            category: BritishIse,
+                            tag: None,
+                            num: None,
+                        },
+                        Type {
+                            category: Canadian,
+                            tag: None,
+                            num: None,
+                        },
+                    ],
+                    word: "acknowledgement's",
+                },
+            ],
+            pos: None,
+            archaic: false,
+            description: None,
+            note: None,
+            comment: None,
+        },
+    ],
+    notes: [],
+}
+
+"#]]
+        );
     }
 
     #[test]
@@ -141,13 +790,174 @@ A B C: coloration's / B. Cv: colouration's
 ",
             )
             .unwrap();
-        assert_eq!(input, "\n");
-        assert_eq!(
-            actual.header,
-            Some("coloration <verified> (level 50)".to_owned())
+        assert_data_eq!(
+            input,
+            str![[r#"
+
+
+"#]]
         );
-        assert_eq!(actual.entries.len(), 3);
-        assert_eq!(actual.notes.len(), 2);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Cluster {
+    header: "coloration ",
+    verified: true,
+    level: 50,
+    entries: [
+        Entry {
+            variants: [
+                Variant {
+                    types: [
+                        Type {
+                            category: American,
+                            tag: None,
+                            num: None,
+                        },
+                        Type {
+                            category: BritishIse,
+                            tag: None,
+                            num: None,
+                        },
+                        Type {
+                            category: Canadian,
+                            tag: None,
+                            num: None,
+                        },
+                    ],
+                    word: "coloration",
+                },
+                Variant {
+                    types: [
+                        Type {
+                            category: BritishIse,
+                            tag: Some(
+                                Eq,
+                            ),
+                            num: None,
+                        },
+                        Type {
+                            category: Canadian,
+                            tag: Some(
+                                Variant,
+                            ),
+                            num: None,
+                        },
+                    ],
+                    word: "colouration",
+                },
+            ],
+            pos: None,
+            archaic: false,
+            description: None,
+            note: None,
+            comment: None,
+        },
+        Entry {
+            variants: [
+                Variant {
+                    types: [
+                        Type {
+                            category: American,
+                            tag: None,
+                            num: None,
+                        },
+                        Type {
+                            category: BritishIse,
+                            tag: None,
+                            num: None,
+                        },
+                        Type {
+                            category: Canadian,
+                            tag: None,
+                            num: None,
+                        },
+                    ],
+                    word: "colorations",
+                },
+                Variant {
+                    types: [
+                        Type {
+                            category: BritishIse,
+                            tag: Some(
+                                Eq,
+                            ),
+                            num: None,
+                        },
+                        Type {
+                            category: Canadian,
+                            tag: Some(
+                                Variant,
+                            ),
+                            num: None,
+                        },
+                    ],
+                    word: "colourations",
+                },
+            ],
+            pos: None,
+            archaic: false,
+            description: None,
+            note: None,
+            comment: None,
+        },
+        Entry {
+            variants: [
+                Variant {
+                    types: [
+                        Type {
+                            category: American,
+                            tag: None,
+                            num: None,
+                        },
+                        Type {
+                            category: BritishIse,
+                            tag: None,
+                            num: None,
+                        },
+                        Type {
+                            category: Canadian,
+                            tag: None,
+                            num: None,
+                        },
+                    ],
+                    word: "coloration's",
+                },
+                Variant {
+                    types: [
+                        Type {
+                            category: BritishIse,
+                            tag: Some(
+                                Eq,
+                            ),
+                            num: None,
+                        },
+                        Type {
+                            category: Canadian,
+                            tag: Some(
+                                Variant,
+                            ),
+                            num: None,
+                        },
+                    ],
+                    word: "colouration's",
+                },
+            ],
+            pos: None,
+            archaic: false,
+            description: None,
+            note: None,
+            comment: None,
+        },
+    ],
+    notes: [
+        "OED has coloration as the preferred spelling and discolouration as a",
+        "variant for British Engl or some reason",
+    ],
+}
+
+"#]]
+        );
     }
 }
 
@@ -156,35 +966,20 @@ impl Entry {
         Self::parse_.parse(input).map_err(|_err| ParseError)
     }
 
-    fn parse_(input: &mut &str) -> PResult<Self, ()> {
+    fn parse_(input: &mut &str) -> ModalResult<Self, ()> {
         trace("entry", move |input: &mut &str| {
             let var_sep = (winnow::ascii::space0, '/', winnow::ascii::space0);
             let variants =
                 winnow::combinator::separated(1.., Variant::parse_, var_sep).parse_next(input)?;
 
-            let desc_sep = (winnow::ascii::space0, '|');
-            let description =
-                winnow::combinator::opt((desc_sep, Self::parse_description)).parse_next(input)?;
+            let mut e = Self::parse_description.parse_next(input)?;
 
             let comment_sep = (winnow::ascii::space0, '#');
-            let comment = winnow::combinator::opt((
-                comment_sep,
-                winnow::ascii::space1,
-                winnow::ascii::till_line_ending,
-            ))
-            .parse_next(input)?;
+            let comment =
+                opt((comment_sep, space1, winnow::ascii::till_line_ending)).parse_next(input)?;
 
-            let mut e = match description {
-                Some((_, description)) => description,
-                None => Self {
-                    variants: Vec::new(),
-                    pos: None,
-                    archaic: false,
-                    note: false,
-                    description: None,
-                    comment: None,
-                },
-            };
+            let _ = winnow::ascii::space0.parse_next(input)?;
+
             e.variants = variants;
             e.comment = comment.map(|c| c.2.to_owned());
             Ok(e)
@@ -192,42 +987,66 @@ impl Entry {
         .parse_next(input)
     }
 
-    fn parse_description(input: &mut &str) -> PResult<Self, ()> {
+    fn parse_description(input: &mut &str) -> ModalResult<Self, ()> {
         trace("description", move |input: &mut &str| {
-            let (pos, archaic, note, description) = (
-                winnow::combinator::opt((winnow::ascii::space1, Pos::parse_)),
-                winnow::combinator::opt((winnow::ascii::space1, "(-)")),
-                winnow::combinator::opt((winnow::ascii::space1, "--")),
-                winnow::combinator::opt((
-                    winnow::ascii::space1,
-                    winnow::token::take_till(0.., ('\n', '\r', '#')),
-                )),
-            )
-                .parse_next(input)?;
-
-            let variants = Vec::new();
-            let pos = pos.map(|(_, p)| p);
-            let archaic = archaic.is_some();
-            let note = note.is_some();
-            let description = description.map(|(_, d)| d.to_owned());
-            let e = Self {
-                variants,
-                pos,
-                archaic,
-                note,
-                description,
+            let mut entry = Self {
+                variants: Vec::new(),
+                pos: None,
+                archaic: false,
+                description: None,
+                note: None,
                 comment: None,
             };
-            Ok(e)
+
+            if opt((winnow::ascii::space0, '|'))
+                .parse_next(input)?
+                .is_some()
+            {
+                let _ = opt((space1, "<abbr>")).parse_next(input)?;
+                let _ = opt((space1, "<pl>")).parse_next(input)?;
+                entry.pos = opt(delimited((space1, '<'), cut_err(Pos::parse_), cut_err('>')))
+                    .parse_next(input)?;
+                entry.archaic = opt(preceded(space1, archaic)).parse_next(input)?.is_some();
+                entry.note = opt(preceded(space1, note)).parse_next(input)?;
+                entry.description = opt(preceded(space1, description)).parse_next(input)?;
+
+                if opt((winnow::ascii::space0, '|'))
+                    .parse_next(input)?
+                    .is_some()
+                {
+                    entry.note = opt(preceded(space1, note)).parse_next(input)?;
+                }
+            }
+            Ok(entry)
         })
         .parse_next(input)
     }
+}
+
+fn note(input: &mut &str) -> ModalResult<String, ()> {
+    let (_, _, note) = (NOTE_PREFIX, space1, description).parse_next(input)?;
+    Ok(note)
+}
+
+const NOTE_PREFIX: &str = "--";
+
+fn archaic(input: &mut &str) -> ModalResult<(), ()> {
+    "(-)".void().parse_next(input)
+}
+
+fn description(input: &mut &str) -> ModalResult<String, ()> {
+    let description = winnow::token::take_till(0.., ('\n', '\r', '#', '|')).parse_next(input)?;
+    Ok(description.to_owned())
 }
 
 #[cfg(test)]
 mod test_entry {
     #![allow(clippy::bool_assert_comparison)]
     use super::*;
+
+    use snapbox::assert_data_eq;
+    use snapbox::str;
+    use snapbox::ToDebug;
 
     #[test]
     fn test_variant_only() {
@@ -236,12 +1055,67 @@ mod test_entry {
         let (input, actual) = Entry::parse_
             .parse_peek("A Cv: acknowledgment's / Av B C: acknowledgement's\n")
             .unwrap();
-        assert_eq!(input, "\n");
-        assert_eq!(actual.variants.len(), 2);
-        assert_eq!(actual.pos, None);
-        assert_eq!(actual.archaic, false);
-        assert_eq!(actual.note, false);
-        assert_eq!(actual.description, None);
+        assert_data_eq!(
+            input,
+            str![[r#"
+
+
+"#]]
+        );
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Entry {
+    variants: [
+        Variant {
+            types: [
+                Type {
+                    category: American,
+                    tag: None,
+                    num: None,
+                },
+                Type {
+                    category: Canadian,
+                    tag: Some(
+                        Variant,
+                    ),
+                    num: None,
+                },
+            ],
+            word: "acknowledgment's",
+        },
+        Variant {
+            types: [
+                Type {
+                    category: American,
+                    tag: Some(
+                        Variant,
+                    ),
+                    num: None,
+                },
+                Type {
+                    category: BritishIse,
+                    tag: None,
+                    num: None,
+                },
+                Type {
+                    category: Canadian,
+                    tag: None,
+                    num: None,
+                },
+            ],
+            word: "acknowledgement's",
+        },
+    ],
+    pos: None,
+    archaic: false,
+    description: None,
+    note: None,
+    comment: None,
+}
+
+"#]]
+        );
     }
 
     #[test]
@@ -251,12 +1125,55 @@ mod test_entry {
         let (input, actual) = Entry::parse_
             .parse_peek("A C: prize / B: prise | otherwise\n")
             .unwrap();
-        assert_eq!(input, "\n");
-        assert_eq!(actual.variants.len(), 2);
-        assert_eq!(actual.pos, None);
-        assert_eq!(actual.archaic, false);
-        assert_eq!(actual.note, false);
-        assert_eq!(actual.description, Some("otherwise".to_owned()));
+        assert_data_eq!(
+            input,
+            str![[r#"
+
+
+"#]]
+        );
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Entry {
+    variants: [
+        Variant {
+            types: [
+                Type {
+                    category: American,
+                    tag: None,
+                    num: None,
+                },
+                Type {
+                    category: Canadian,
+                    tag: None,
+                    num: None,
+                },
+            ],
+            word: "prize",
+        },
+        Variant {
+            types: [
+                Type {
+                    category: BritishIse,
+                    tag: None,
+                    num: None,
+                },
+            ],
+            word: "prise",
+        },
+    ],
+    pos: None,
+    archaic: false,
+    description: Some(
+        "otherwise",
+    ),
+    note: None,
+    comment: None,
+}
+
+"#]]
+        );
     }
 
     #[test]
@@ -266,12 +1183,169 @@ mod test_entry {
         let (input, actual) = Entry::parse_
             .parse_peek("A B C: practice / AV Cv: practise | <N>\n")
             .unwrap();
-        assert_eq!(input, "\n");
-        assert_eq!(actual.variants.len(), 2);
-        assert_eq!(actual.pos, Some(Pos::Noun));
-        assert_eq!(actual.archaic, false);
-        assert_eq!(actual.note, false);
-        assert_eq!(actual.description, None);
+        assert_data_eq!(
+            input,
+            str![[r#"
+
+
+"#]]
+        );
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Entry {
+    variants: [
+        Variant {
+            types: [
+                Type {
+                    category: American,
+                    tag: None,
+                    num: None,
+                },
+                Type {
+                    category: BritishIse,
+                    tag: None,
+                    num: None,
+                },
+                Type {
+                    category: Canadian,
+                    tag: None,
+                    num: None,
+                },
+            ],
+            word: "practice",
+        },
+        Variant {
+            types: [
+                Type {
+                    category: American,
+                    tag: Some(
+                        Seldom,
+                    ),
+                    num: None,
+                },
+                Type {
+                    category: Canadian,
+                    tag: Some(
+                        Variant,
+                    ),
+                    num: None,
+                },
+            ],
+            word: "practise",
+        },
+    ],
+    pos: Some(
+        Noun,
+    ),
+    archaic: false,
+    description: None,
+    note: None,
+    comment: None,
+}
+
+"#]]
+        );
+    }
+
+    #[test]
+    fn test_pos_bad() {
+        // Having nothing after `A` causes an incomplete parse. Shouldn't be a problem for my use
+        // cases.
+        let err = Entry::parse_
+            .parse_peek("A B C: practice / AV Cv: practise | <Bad>\n")
+            .unwrap_err();
+        assert_data_eq!(err.to_string(), str!["Parsing Failure: ()"]);
+    }
+
+    #[test]
+    fn test_plural() {
+        // Having nothing after `A` causes an incomplete parse. Shouldn't be a problem for my use
+        // cases.
+        let (input, actual) = Entry::parse_.parse_peek("_ _-: dogies | <pl>\n").unwrap();
+        assert_data_eq!(
+            input,
+            str![[r#"
+
+
+"#]]
+        );
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Entry {
+    variants: [
+        Variant {
+            types: [
+                Type {
+                    category: Other,
+                    tag: None,
+                    num: None,
+                },
+                Type {
+                    category: Other,
+                    tag: Some(
+                        Possible,
+                    ),
+                    num: None,
+                },
+            ],
+            word: "dogies",
+        },
+    ],
+    pos: None,
+    archaic: false,
+    description: None,
+    note: None,
+    comment: None,
+}
+
+"#]]
+        );
+    }
+
+    #[test]
+    fn test_abbr() {
+        // Having nothing after `A` causes an incomplete parse. Shouldn't be a problem for my use
+        // cases.
+        let (input, actual) = Entry::parse_.parse_peek("A B: ha | <abbr>\n").unwrap();
+        assert_data_eq!(
+            input,
+            str![[r#"
+
+
+"#]]
+        );
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Entry {
+    variants: [
+        Variant {
+            types: [
+                Type {
+                    category: American,
+                    tag: None,
+                    num: None,
+                },
+                Type {
+                    category: BritishIse,
+                    tag: None,
+                    num: None,
+                },
+            ],
+            word: "ha",
+        },
+    ],
+    pos: None,
+    archaic: false,
+    description: None,
+    note: None,
+    comment: None,
+}
+
+"#]]
+        );
     }
 
     #[test]
@@ -281,12 +1355,57 @@ mod test_entry {
         let (input, actual) = Entry::parse_
             .parse_peek("A: bark / Av B: barque | (-) ship\n")
             .unwrap();
-        assert_eq!(input, "\n");
-        assert_eq!(actual.variants.len(), 2);
-        assert_eq!(actual.pos, None);
-        assert_eq!(actual.archaic, true);
-        assert_eq!(actual.note, false);
-        assert_eq!(actual.description, Some("ship".to_owned()));
+        assert_data_eq!(
+            input,
+            str![[r#"
+
+
+"#]]
+        );
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Entry {
+    variants: [
+        Variant {
+            types: [
+                Type {
+                    category: American,
+                    tag: None,
+                    num: None,
+                },
+            ],
+            word: "bark",
+        },
+        Variant {
+            types: [
+                Type {
+                    category: American,
+                    tag: Some(
+                        Variant,
+                    ),
+                    num: None,
+                },
+                Type {
+                    category: BritishIse,
+                    tag: None,
+                    num: None,
+                },
+            ],
+            word: "barque",
+        },
+    ],
+    pos: None,
+    archaic: true,
+    description: Some(
+        "ship",
+    ),
+    note: None,
+    comment: None,
+}
+
+"#]]
+        );
     }
 
     #[test]
@@ -296,12 +1415,90 @@ mod test_entry {
         let (input, actual) = Entry::parse_
             .parse_peek("_: cabbies | -- plural\n")
             .unwrap();
-        assert_eq!(input, "\n");
-        assert_eq!(actual.variants.len(), 1);
-        assert_eq!(actual.pos, None);
-        assert_eq!(actual.archaic, false);
-        assert_eq!(actual.note, true);
-        assert_eq!(actual.description, Some("plural".to_owned()));
+        assert_data_eq!(
+            input,
+            str![[r#"
+
+
+"#]]
+        );
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Entry {
+    variants: [
+        Variant {
+            types: [
+                Type {
+                    category: Other,
+                    tag: None,
+                    num: None,
+                },
+            ],
+            word: "cabbies",
+        },
+    ],
+    pos: None,
+    archaic: false,
+    description: None,
+    note: Some(
+        "plural",
+    ),
+    comment: None,
+}
+
+"#]]
+        );
+    }
+
+    #[test]
+    fn test_description_and_note() {
+        // Having nothing after `A` causes an incomplete parse. Shouldn't be a problem for my use
+        // cases.
+        let (input, actual) = Entry::parse_
+            .parse_peek("A B: wizz | as in \"gee whiz\" | -- Ox: informal, chiefly N. Amer.\n")
+            .unwrap();
+        assert_data_eq!(
+            input,
+            str![[r#"
+
+
+"#]]
+        );
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Entry {
+    variants: [
+        Variant {
+            types: [
+                Type {
+                    category: American,
+                    tag: None,
+                    num: None,
+                },
+                Type {
+                    category: BritishIse,
+                    tag: None,
+                    num: None,
+                },
+            ],
+            word: "wizz",
+        },
+    ],
+    pos: None,
+    archaic: false,
+    description: Some(
+        "as in /"gee whiz/" ",
+    ),
+    note: Some(
+        "Ox: informal, chiefly N. Amer.",
+    ),
+    comment: None,
+}
+
+"#]]
+        );
     }
 
     #[test]
@@ -310,15 +1507,63 @@ mod test_entry {
             "A B: accursed / AV B-: accurst # ODE: archaic, M-W: 'or' but can find little evidence of use\n",
         )
         .unwrap();
-        assert_eq!(input, "\n");
-        assert_eq!(actual.variants.len(), 2);
-        assert_eq!(actual.pos, None);
-        assert_eq!(actual.archaic, false);
-        assert_eq!(actual.note, false);
-        assert_eq!(actual.description, None);
-        assert_eq!(
-            actual.comment,
-            Some("ODE: archaic, M-W: 'or' but can find little evidence of use".to_owned())
+        assert_data_eq!(
+            input,
+            str![[r#"
+
+
+"#]]
+        );
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Entry {
+    variants: [
+        Variant {
+            types: [
+                Type {
+                    category: American,
+                    tag: None,
+                    num: None,
+                },
+                Type {
+                    category: BritishIse,
+                    tag: None,
+                    num: None,
+                },
+            ],
+            word: "accursed",
+        },
+        Variant {
+            types: [
+                Type {
+                    category: American,
+                    tag: Some(
+                        Seldom,
+                    ),
+                    num: None,
+                },
+                Type {
+                    category: BritishIse,
+                    tag: Some(
+                        Possible,
+                    ),
+                    num: None,
+                },
+            ],
+            word: "accurst",
+        },
+    ],
+    pos: None,
+    archaic: false,
+    description: None,
+    note: None,
+    comment: Some(
+        "ODE: archaic, M-W: 'or' but can find little evidence of use",
+    ),
+}
+
+"#]]
         );
     }
 }
@@ -328,12 +1573,18 @@ impl Variant {
         Self::parse_.parse(input).map_err(|_err| ParseError)
     }
 
-    fn parse_(input: &mut &str) -> PResult<Self, ()> {
+    fn parse_(input: &mut &str) -> ModalResult<Self, ()> {
         trace("variant", move |input: &mut &str| {
-            let types = winnow::combinator::separated(1.., Type::parse_, winnow::ascii::space1);
+            let types = winnow::combinator::separated(1.., Type::parse_, space1);
+            let columns =
+                winnow::combinator::separated(0.., winnow::ascii::digit1, space1).map(|()| ());
             let sep = (":", winnow::ascii::space0);
-            let (types, word) =
-                winnow::combinator::separated_pair(types, sep, word).parse_next(input)?;
+            let ((types, _, _columns), word) = winnow::combinator::separated_pair(
+                (types, winnow::ascii::space0, columns),
+                sep,
+                word,
+            )
+            .parse_next(input)?;
             let v = Self { types, word };
             Ok(v)
         })
@@ -341,7 +1592,7 @@ impl Variant {
     }
 }
 
-fn word(input: &mut &str) -> PResult<String, ()> {
+fn word(input: &mut &str) -> ModalResult<String, ()> {
     trace("word", move |input: &mut &str| {
         winnow::token::take_till(1.., |item: char| item.is_ascii_whitespace())
             .map(|s: &str| s.to_owned().replace('_', " "))
@@ -354,28 +1605,39 @@ fn word(input: &mut &str) -> PResult<String, ()> {
 mod test_variant {
     use super::*;
 
+    use snapbox::assert_data_eq;
+    use snapbox::str;
+    use snapbox::ToDebug;
+
     #[test]
     fn test_valid() {
         // Having nothing after `A` causes an incomplete parse. Shouldn't be a problem for my use
         // cases.
         let (input, actual) = Variant::parse_.parse_peek("A Cv: acknowledgment ").unwrap();
-        assert_eq!(input, " ");
-        assert_eq!(
-            actual.types,
-            vec![
-                Type {
-                    category: Category::American,
-                    tag: None,
-                    num: None,
-                },
-                Type {
-                    category: Category::Canadian,
-                    tag: Some(Tag::Variant),
-                    num: None,
-                }
-            ]
+        assert_data_eq!(input, str![" "]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Variant {
+    types: [
+        Type {
+            category: American,
+            tag: None,
+            num: None,
+        },
+        Type {
+            category: Canadian,
+            tag: Some(
+                Variant,
+            ),
+            num: None,
+        },
+    ],
+    word: "acknowledgment",
+}
+
+"#]]
         );
-        assert_eq!(actual.word, "acknowledgment");
     }
 
     #[test]
@@ -383,38 +1645,87 @@ mod test_variant {
         let (input, actual) = Variant::parse_
             .parse_peek("A Cv: acknowledgment's / Av B C: acknowledgement's")
             .unwrap();
-        assert_eq!(input, " / Av B C: acknowledgement's");
-        assert_eq!(
-            actual.types,
-            vec![
-                Type {
-                    category: Category::American,
-                    tag: None,
-                    num: None,
-                },
-                Type {
-                    category: Category::Canadian,
-                    tag: Some(Tag::Variant),
-                    num: None,
-                }
-            ]
+        assert_data_eq!(input, str![" / Av B C: acknowledgement's"]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Variant {
+    types: [
+        Type {
+            category: American,
+            tag: None,
+            num: None,
+        },
+        Type {
+            category: Canadian,
+            tag: Some(
+                Variant,
+            ),
+            num: None,
+        },
+    ],
+    word: "acknowledgment's",
+}
+
+"#]]
         );
-        assert_eq!(actual.word, "acknowledgment's");
     }
 
     #[test]
     fn test_underscore() {
         let (input, actual) = Variant::parse_.parse_peek("_: air_gun\n").unwrap();
-        assert_eq!(input, "\n");
-        assert_eq!(
-            actual.types,
-            vec![Type {
-                category: Category::Other,
-                tag: None,
-                num: None,
-            },]
+        assert_data_eq!(
+            input,
+            str![[r#"
+
+
+"#]]
         );
-        assert_eq!(actual.word, "air gun");
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Variant {
+    types: [
+        Type {
+            category: Other,
+            tag: None,
+            num: None,
+        },
+    ],
+    word: "air gun",
+}
+
+"#]]
+        );
+    }
+
+    #[test]
+    fn test_columns() {
+        // Having nothing after `A` causes an incomplete parse. Shouldn't be a problem for my use
+        // cases.
+        let (input, actual) = Variant::parse_.parse_peek("A B 1 2: aeries").unwrap();
+        assert_data_eq!(input, str![""]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Variant {
+    types: [
+        Type {
+            category: American,
+            tag: None,
+            num: None,
+        },
+        Type {
+            category: BritishIse,
+            tag: None,
+            num: None,
+        },
+    ],
+    word: "aeries",
+}
+
+"#]]
+        );
     }
 }
 
@@ -423,12 +1734,12 @@ impl Type {
         Self::parse_.parse(input).map_err(|_err| ParseError)
     }
 
-    fn parse_(input: &mut &str) -> PResult<Type, ()> {
+    fn parse_(input: &mut &str) -> ModalResult<Type, ()> {
         trace("type", move |input: &mut &str| {
             let category = Category::parse_(input)?;
-            let tag = winnow::combinator::opt(Tag::parse_).parse_next(input)?;
-            let num = winnow::combinator::opt(winnow::ascii::digit1).parse_next(input)?;
-            let num = num.map(|s| s.parse().expect("parser ensured its a number"));
+            let tag = opt(Tag::parse_).parse_next(input)?;
+            let num = opt(winnow::ascii::digit1).parse_next(input)?;
+            let num = num.map(|s| s.parse().expect("parser ensured it's a number"));
             let t = Type { category, tag, num };
             Ok(t)
         })
@@ -440,45 +1751,97 @@ impl Type {
 mod test_type {
     use super::*;
 
+    use snapbox::assert_data_eq;
+    use snapbox::str;
+    use snapbox::ToDebug;
+
     #[test]
     fn test_valid() {
         // Having nothing after `A` causes an incomplete parse. Shouldn't be a problem for my use
         // cases.
         let (input, actual) = Type::parse_.parse_peek("A ").unwrap();
-        assert_eq!(input, " ");
-        assert_eq!(actual.category, Category::American);
-        assert_eq!(actual.tag, None);
-        assert_eq!(actual.num, None);
+        assert_data_eq!(input, str![" "]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Type {
+    category: American,
+    tag: None,
+    num: None,
+}
+
+"#]]
+        );
 
         let (input, actual) = Type::parse_.parse_peek("Bv ").unwrap();
-        assert_eq!(input, " ");
-        assert_eq!(actual.category, Category::BritishIse);
-        assert_eq!(actual.tag, Some(Tag::Variant));
-        assert_eq!(actual.num, None);
+        assert_data_eq!(input, str![" "]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Type {
+    category: BritishIse,
+    tag: Some(
+        Variant,
+    ),
+    num: None,
+}
+
+"#]]
+        );
     }
 
     #[test]
     fn test_extra() {
         let (input, actual) = Type::parse_.parse_peek("Z foobar").unwrap();
-        assert_eq!(input, " foobar");
-        assert_eq!(actual.category, Category::BritishIze);
-        assert_eq!(actual.tag, None);
-        assert_eq!(actual.num, None);
+        assert_data_eq!(input, str![" foobar"]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Type {
+    category: BritishIze,
+    tag: None,
+    num: None,
+}
+
+"#]]
+        );
 
         let (input, actual) = Type::parse_.parse_peek("C- foobar").unwrap();
-        assert_eq!(input, " foobar");
-        assert_eq!(actual.category, Category::Canadian);
-        assert_eq!(actual.tag, Some(Tag::Possible));
-        assert_eq!(actual.num, None);
+        assert_data_eq!(input, str![" foobar"]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Type {
+    category: Canadian,
+    tag: Some(
+        Possible,
+    ),
+    num: None,
+}
+
+"#]]
+        );
     }
 
     #[test]
     fn test_num() {
         let (input, actual) = Type::parse_.parse_peek("Av1 ").unwrap();
-        assert_eq!(input, " ");
-        assert_eq!(actual.category, Category::American);
-        assert_eq!(actual.tag, Some(Tag::Variant));
-        assert_eq!(actual.num, Some(1));
+        assert_data_eq!(input, str![" "]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Type {
+    category: American,
+    tag: Some(
+        Variant,
+    ),
+    num: Some(
+        1,
+    ),
+}
+
+"#]]
+        );
     }
 }
 
@@ -487,9 +1850,9 @@ impl Category {
         Self::parse_.parse(input).map_err(|_err| ParseError)
     }
 
-    fn parse_(input: &mut &str) -> PResult<Self, ()> {
+    fn parse_(input: &mut &str) -> ModalResult<Self, ()> {
         trace("category", move |input: &mut &str| {
-            let symbols = winnow::token::one_of(['A', 'B', 'Z', 'C', 'D', '_']);
+            let symbols = one_of(['A', 'B', 'Z', 'C', 'D', '_']);
             symbols
                 .map(|c| match c {
                     'A' => Category::American,
@@ -510,18 +1873,34 @@ impl Category {
 mod test_category {
     use super::*;
 
+    use snapbox::assert_data_eq;
+    use snapbox::str;
+    use snapbox::ToDebug;
+
     #[test]
     fn test_valid() {
         let (input, actual) = Category::parse_.parse_peek("A").unwrap();
-        assert_eq!(input, "");
-        assert_eq!(actual, Category::American);
+        assert_data_eq!(input, str![]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+American
+
+"#]]
+        );
     }
 
     #[test]
     fn test_extra() {
         let (input, actual) = Category::parse_.parse_peek("_ foobar").unwrap();
-        assert_eq!(input, " foobar");
-        assert_eq!(actual, Category::Other);
+        assert_data_eq!(input, str![" foobar"]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Other
+
+"#]]
+        );
     }
 }
 
@@ -530,9 +1909,9 @@ impl Tag {
         Self::parse_.parse(input).map_err(|_err| ParseError)
     }
 
-    fn parse_(input: &mut &str) -> PResult<Self, ()> {
+    fn parse_(input: &mut &str) -> ModalResult<Self, ()> {
         trace("tag", move |input: &mut &str| {
-            let symbols = winnow::token::one_of(['.', 'v', 'V', '-', 'x']);
+            let symbols = one_of(['.', 'v', 'V', '-', 'x']);
             symbols
                 .map(|c| match c {
                     '.' => Tag::Eq,
@@ -552,18 +1931,34 @@ impl Tag {
 mod test_tag {
     use super::*;
 
+    use snapbox::assert_data_eq;
+    use snapbox::str;
+    use snapbox::ToDebug;
+
     #[test]
     fn test_valid() {
         let (input, actual) = Tag::parse_.parse_peek(".").unwrap();
-        assert_eq!(input, "");
-        assert_eq!(actual, Tag::Eq);
+        assert_data_eq!(input, str![]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Eq
+
+"#]]
+        );
     }
 
     #[test]
     fn test_extra() {
         let (input, actual) = Tag::parse_.parse_peek("x foobar").unwrap();
-        assert_eq!(input, " foobar");
-        assert_eq!(actual, Tag::Improper);
+        assert_data_eq!(input, str![" foobar"]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Improper
+
+"#]]
+        );
     }
 }
 
@@ -572,13 +1967,16 @@ impl Pos {
         Self::parse_.parse(input).map_err(|_err| ParseError)
     }
 
-    fn parse_(input: &mut &str) -> PResult<Self, ()> {
+    fn parse_(input: &mut &str) -> ModalResult<Self, ()> {
         trace("pos", move |input: &mut &str| {
-            winnow::combinator::alt((
-                "<N>".value(Pos::Noun),
-                "<V>".value(Pos::Verb),
-                "<Adj>".value(Pos::Adjective),
-                "<Adv>".value(Pos::Adverb),
+            alt((
+                "N".value(Pos::Noun),
+                "V".value(Pos::Verb),
+                "Adj".value(Pos::Adjective),
+                "Adv".value(Pos::Adverb),
+                "A".value(Pos::AdjectiveOrAdverb),
+                "Inj".value(Pos::Interjection),
+                "Prep".value(Pos::Preposition),
             ))
             .parse_next(input)
         })
@@ -590,18 +1988,34 @@ impl Pos {
 mod test_pos {
     use super::*;
 
+    use snapbox::assert_data_eq;
+    use snapbox::str;
+    use snapbox::ToDebug;
+
     #[test]
     fn test_valid() {
-        let (input, actual) = Pos::parse_.parse_peek("<N>").unwrap();
-        assert_eq!(input, "");
-        assert_eq!(actual, Pos::Noun);
+        let (input, actual) = Pos::parse_.parse_peek("N>").unwrap();
+        assert_data_eq!(input, str![">"]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Noun
+
+"#]]
+        );
     }
 
     #[test]
     fn test_extra() {
-        let (input, actual) = Pos::parse_.parse_peek("<Adj> foobar").unwrap();
-        assert_eq!(input, " foobar");
-        assert_eq!(actual, Pos::Adjective);
+        let (input, actual) = Pos::parse_.parse_peek("Adj> foobar").unwrap();
+        assert_data_eq!(input, str!["> foobar"]);
+        assert_data_eq!(
+            actual.to_debug(),
+            str![[r#"
+Adjective
+
+"#]]
+        );
     }
 }
 

@@ -9,7 +9,7 @@ fn codegen() {
 
     let content = String::from_utf8(content).unwrap();
     let content = codegenrs::rustfmt(&content, None).unwrap();
-    snapbox::assert_eq(snapbox::file!["../src/dict_codegen.rs"], content);
+    snapbox::assert_data_eq!(content, snapbox::file!["../src/dict_codegen.rs"].raw());
 }
 
 fn generate<W: std::io::Write>(file: &mut W) {
@@ -27,31 +27,37 @@ fn generate<W: std::io::Write>(file: &mut W) {
         british,
     } = parse_dict(DICT);
 
-    dictgen::generate_table(
-        file,
-        "MAIN_DICTIONARY",
-        "&[&str]",
-        main.into_iter().map(|kv| (kv.0, format!("&{:?}", kv.1))),
-    )
-    .unwrap();
+    dictgen::DictGen::new()
+        .name("MAIN_DICTIONARY")
+        .value_type("&[&str]")
+        .ordered_map()
+        .write(
+            file,
+            main.into_iter().map(|kv| (kv.0, format!("&{:?}", kv.1))),
+        )
+        .unwrap();
 
-    dictgen::generate_table(
-        file,
-        "AMERICAN_DICTIONARY",
-        "&[&str]",
-        american
-            .into_iter()
-            .map(|kv| (kv.0, format!("&{:?}", kv.1))),
-    )
-    .unwrap();
+    dictgen::DictGen::new()
+        .name("AMERICAN_DICTIONARY")
+        .value_type("&[&str]")
+        .ordered_map()
+        .write(
+            file,
+            american
+                .into_iter()
+                .map(|kv| (kv.0, format!("&{:?}", kv.1))),
+        )
+        .unwrap();
 
-    dictgen::generate_table(
-        file,
-        "BRITISH_DICTIONARY",
-        "&[&str]",
-        british.into_iter().map(|kv| (kv.0, format!("&{:?}", kv.1))),
-    )
-    .unwrap();
+    dictgen::DictGen::new()
+        .name("BRITISH_DICTIONARY")
+        .value_type("&[&str]")
+        .ordered_map()
+        .write(
+            file,
+            british.into_iter().map(|kv| (kv.0, format!("&{:?}", kv.1))),
+        )
+        .unwrap();
 }
 
 struct Words<'s> {
@@ -89,13 +95,13 @@ fn parse_dict(raw: &str) -> Words<'_> {
                     vec![captures.get(2).unwrap().as_str()],
                 );
             } else {
-                eprintln!("Unknown line: {}", line);
+                eprintln!("Unknown line: {line}");
             }
         }
     }
 
     if !bad.is_empty() {
-        panic!("Failed parsing; found extra words: {:#?}", bad);
+        panic!("Failed parsing; found extra words: {bad:#?}");
     }
 
     Words {

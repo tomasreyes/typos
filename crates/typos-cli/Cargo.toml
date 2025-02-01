@@ -1,19 +1,19 @@
 [package]
 name = "typos-cli"
-version = "1.21.0"
+version = "1.29.5"
 description = "Source Code Spelling Correction"
 readme = "../../README.md"
 categories = ["development-tools", "text-processing"]
 keywords = ["development", "spelling"]
-license.workspace = true
 repository.workspace = true
+license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 include.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+rustdoc-args = ["--cfg", "docsrs", "--generate-link-to-definition"]
 
 [package.metadata.release]
 tag-prefix = ""
@@ -25,6 +25,7 @@ pre-release-replacements = [
   {file="../../CHANGELOG.md", search="<!-- next-url -->", replace="<!-- next-url -->\n[Unreleased]: https://github.com/crate-ci/typos/compare/{{tag_name}}...HEAD", exactly=1},
   {file="../../action/entrypoint.sh", search="VERSION=.*", replace="VERSION={{version}}", min=1},
   {file="../../docs/pre-commit.md", search="rev: .*", replace="rev: {{tag_name}}", exactly=1},
+  {file="../../docs/github-action.md", search="uses: crate-ci/typos@.*", replace="uses: crate-ci/typos@{{tag_name}}", min=1},
   {file="../../setup.py", search="TYPOS_VERSION = .*", replace="TYPOS_VERSION = '{{version}}'", exactly=1},
 ]
 
@@ -32,7 +33,7 @@ pre-release-replacements = [
 default = ["dict", "vars"]
 dict = ["dep:typos-dict"]
 vars = ["dep:typos-vars"]
-
+unstable-schema = ["dep:schemars"]
 
 [[bin]]
 name = "typos"
@@ -41,13 +42,13 @@ doc = false
 
 [dependencies]
 typos = { version = "^0.10", path = "../typos" }
-varcon-core = { version = "^4.0.7", path = "../varcon-core" }
-typos-dict = { version = "^0.11", path = "../typos-dict", optional = true }
-typos-vars = { version = "^0.8", path = "../typos-vars", optional = true }
-unicase = "2.7"
+varcon-core = { version = "^5.0.2", path = "../varcon-core" }
+typos-dict = { version = "^0.12", path = "../typos-dict", optional = true }
+typos-vars = { version = "^0.9", path = "../typos-vars", optional = true }
+unicase = "2.8.1"
 anyhow = "1.0"
 clap = { version = "4.5.4", features = ["derive"] }
-clap-verbosity-flag = "2.2"
+clap-verbosity-flag = "3.0"
 ignore = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8.12"
@@ -60,14 +61,13 @@ proc-exit = "2.0"
 human-panic = "2.0.0"
 content_inspector = "0.2.4"
 unicode-segmentation = "1.11.0"
-derive_more = "0.99.17"
+derive_more = { version = "1.0", features = ["from", "display"] }
 derive_setters = "0.1"
-itertools = "0.12"
+itertools = "0.14"
 serde_json = "1.0"
 kstring = { version = "2.0.0", features = ["serde"] }
 typed-arena = "2.0.2"
-maplit = "1.0"
-unicode-width = "0.1.12"
+unicode-width = "0.2.0"
 unic-emoji-char = "0.9.0"
 thread_local = "1.1.8"
 globset = "0.4.14"
@@ -77,12 +77,15 @@ colorchoice-clap = "1.0.3"
 serde_regex = "1.1.0"
 regex = "1.10.4"
 encoding_rs = "0.8.34"
+serde-sarif = "0.7.0"
+schemars = { version = "0.8.21", features = ["preserve_order","semver"], optional = true }
 
 [dev-dependencies]
 assert_fs = "1.1"
 divan = "0.1.14"
-snapbox = "0.5.9"
-trycmd = "0.15.1"
+maplit = "1.0"
+snapbox = "0.6.5"
+trycmd = "0.15.4"
 
 [[bench]]
 name = "check_file"

@@ -9,7 +9,7 @@ fn codegen() {
 
     let content = String::from_utf8(content).unwrap();
     let content = codegenrs::rustfmt(&content, None).unwrap();
-    snapbox::assert_eq(snapbox::file!["../src/vars_codegen.rs"], content);
+    snapbox::assert_data_eq!(content, snapbox::file!["../src/vars_codegen.rs"].raw());
 }
 
 static CATEGORIES: [varcon::Category; 4] = [
@@ -52,9 +52,7 @@ fn generate_variations<W: Write>(file: &mut W) {
         file,
         "    {}",
         itertools::join(
-            CATEGORIES
-                .iter()
-                .map(|c| format!("crate::Category::{:?}", c)),
+            CATEGORIES.iter().map(|c| format!("crate::Category::{c:?}")),
             " | "
         )
     )
@@ -71,8 +69,7 @@ fn generate_variations<W: Write>(file: &mut W) {
     for (index, category) in CATEGORIES.iter().enumerate() {
         writeln!(
             file,
-            "    crate::Category::{:?} => options[{}],",
-            category, index
+            "    crate::Category::{category:?} => options[{index}],"
         )
         .unwrap();
     }
@@ -87,28 +84,29 @@ fn generate_variations<W: Write>(file: &mut W) {
 
     let entry_sets = entry_sets(entries.iter());
     let mut referenced_symbols: HashSet<&str> = HashSet::new();
-    dictgen::generate_trie(
-        file,
-        "VARS",
-        "&[(u8, &VariantsMap)]",
-        entry_sets.iter().filter_map(|kv| {
-            let (word, data) = kv;
-            if is_always_valid(data) {
-                // No need to convert from current form to target form
-                None
-            } else {
-                referenced_symbols.extend(data.iter().map(|(s, _)| s));
-                let value = generate_link(data);
-                Some((*word, value))
-            }
-        }),
-        64,
-    )
-    .unwrap();
+    dictgen::DictGen::new()
+        .name("VARS")
+        .value_type("&[(u8, &VariantsMap)]")
+        .trie()
+        .write(
+            file,
+            entry_sets.iter().filter_map(|kv| {
+                let (word, data) = kv;
+                if is_always_valid(data) {
+                    // No need to convert from current form to target form
+                    None
+                } else {
+                    referenced_symbols.extend(data.iter().map(|(s, _)| s));
+                    let value = generate_link(data);
+                    Some((*word, value))
+                }
+            }),
+        )
+        .unwrap();
 
     let no_invalid = entry_sets.values().all(|data| !is_always_invalid(data));
     writeln!(file).unwrap();
-    writeln!(file, "pub const NO_INVALID: bool = {:?};", no_invalid,).unwrap();
+    writeln!(file, "pub const NO_INVALID: bool = {no_invalid:?};",).unwrap();
 
     writeln!(file).unwrap();
     for (symbol, entry) in entries.iter() {
@@ -120,14 +118,14 @@ fn generate_variations<W: Write>(file: &mut W) {
 }
 
 fn generate_entry(file: &mut impl Write, symbol: &str, entry: &varcon_core::Entry) {
-    writeln!(file, "pub(crate) static {}: VariantsMap = [", symbol).unwrap();
+    writeln!(file, "pub(crate) static {symbol}: VariantsMap = [").unwrap();
     for category in &CATEGORIES {
         let corrections = collect_correct(entry, *category);
         let mut corrections: Vec<_> = corrections.iter().collect();
         corrections.sort_unstable();
         writeln!(file, "  &[").unwrap();
         for correction in &corrections {
-            writeln!(file, "    {:?},", correction).unwrap();
+            writeln!(file, "    {correction:?},").unwrap();
         }
         writeln!(file, "  ],").unwrap();
     }
@@ -169,6 +167,7 @@ fn is_always_invalid(data: &[(&str, varcon::CategorySet)]) -> bool {
 fn entries() -> BTreeMap<String, varcon_core::Entry> {
     varcon::VARCON
         .iter()
+        .filter(|c| c.verified)
         .flat_map(|c| c.entries.iter())
         .filter(|e| {
             e.variants

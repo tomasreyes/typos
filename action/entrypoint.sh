@@ -19,13 +19,35 @@ if [[ -z $(ls ${TARGET} 2>/dev/null) ]]; then
     exit 1
 fi
 
+
 if [[ ! -x ${COMMAND} ]]; then
-    VERSION=1.21.0
+    VERSION=1.29.5
+    if [[ "$(uname -m)" == "arm64" ]]; then
+        ARCH="aarch64"
+    else
+        ARCH="x86_64"
+    fi
+    UNAME=$(uname -s)
+    if [[ "$UNAME" == "Darwin" ]]; then
+        TARGET_FILE="${ARCH}-apple-darwin"
+        FILE_EXT="tar.gz"
+    elif [[ "$UNAME" == CYGWIN* || "$UNAME" == MINGW* || "$UNAME" == MSYS* ]] ; then
+        TARGET_FILE="${ARCH}-pc-windows-msvc"
+        FILE_EXT="zip"
+    else
+        TARGET_FILE="${ARCH}-unknown-linux-musl"
+        FILE_EXT="tar.gz"
+    fi
+    FILE_NAME="typos-v${VERSION}-${TARGET_FILE}.${FILE_EXT}"
     log "Downloading 'typos' v${VERSION}"
-    wget --progress=dot:mega "https://github.com/crate-ci/typos/releases/download/v${VERSION}/typos-v${VERSION}-x86_64-unknown-linux-musl.tar.gz"
+    wget --progress=dot:mega "https://github.com/crate-ci/typos/releases/download/v${VERSION}/${FILE_NAME}"
     mkdir -p ${_INSTALL_DIR}
-    tar -xzvf typos-v${VERSION}-x86_64-unknown-linux-musl.tar.gz -C ${_INSTALL_DIR} ./${CMD_NAME}
-    rm typos-v${VERSION}-x86_64-unknown-linux-musl.tar.gz
+    if [[ "$FILE_EXT" == "zip" ]]; then
+        unzip -o "${FILE_NAME}" -d ${_INSTALL_DIR} ${CMD_NAME}.exe
+    else
+        tar -xzvf "${FILE_NAME}" -C ${_INSTALL_DIR} ./${CMD_NAME}
+    fi
+    rm "${FILE_NAME}"
 fi
 log "jq: $(jq --version)"
 

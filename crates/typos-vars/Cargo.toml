@@ -1,34 +1,32 @@
 [package]
 name = "typos-vars"
-version = "0.8.17"
+version = "0.9.1"
 description = "Source Code Spelling Correction"
 readme = "../../README.md"
 categories = ["development-tools", "text-processing"]
 keywords = ["development", "spelling"]
-license.workspace = true
 repository.workspace = true
+license.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 include.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+rustdoc-args = ["--cfg", "docsrs", "--generate-link-to-definition"]
 
 [dependencies]
-unicase = "2.7"
-dictgen = { version = "^0.2", path = "../dictgen" }
-varcon-core = { version = "^4.0", path = "../varcon-core", features = ["flags"] }
+dictgen = { version = "^0.3", path = "../dictgen" }
+varcon-core = { version = "^5.0", path = "../varcon-core", features = ["flags"] }
 
 [dev-dependencies]
-varcon = { version = "^0.7", path = "../varcon", features = ["flags"] }
-varcon-core = { version = "^4.0", path = "../varcon-core", features = ["flags"] }
+varcon = { version = "^1.0", path = "../varcon", features = ["flags"] }
+varcon-core = { version = "^5.0", path = "../varcon-core", features = ["flags"] }
 typos = { version = "^0.10", path = "../typos" }
-unicase = "2.7"
 codegenrs = "3.0"
-itertools = "0.12"
-dictgen = { version = "^0.2", path = "../dictgen", features = ["codegen"] }
-snapbox = { version = "0.5.9", features = ["path"] }
+itertools = "0.14"
+dictgen = { version = "^0.3", path = "../dictgen", features = ["codegen"] }
+snapbox = "0.6.5"
 
 [lints]
 workspace = true

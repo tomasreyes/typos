@@ -25,7 +25,7 @@ fn verify() {
     drop(wtr);
 
     let content = String::from_utf8(content).unwrap();
-    snapbox::assert_eq(snapbox::file!["../assets/words.csv"], content);
+    snapbox::assert_data_eq!(content, snapbox::file!["../assets/words.csv"].raw());
 }
 
 fn parse_dict(path: &str) -> Vec<(String, Vec<String>)> {
@@ -93,13 +93,13 @@ fn process<S: Into<String>>(
         .filter(|(typo, _)| {
             let is_disallowed = varcon_words.contains(&UniCase::new(typo));
             if is_disallowed {
-                eprintln!("{:?} is disallowed; in varcon", typo);
+                eprintln!("{typo:?} is disallowed; in varcon");
             }
             !is_disallowed
         })
         .filter(|(typo, _)| {
             if let Some(reason) = allowed_words.get(typo.as_ref()) {
-                eprintln!("{:?} is disallowed; {}", typo, reason);
+                eprintln!("{typo:?} is disallowed; {reason}");
                 false
             } else {
                 true
@@ -194,6 +194,7 @@ fn varcon_words() -> HashSet<UniCase<&'static str>> {
     // dictionary
     varcon::VARCON
         .iter()
+        .filter(|c| c.verified)
         .flat_map(|c| c.entries.iter())
         .flat_map(|e| e.variants.iter())
         .map(|v| UniCase::new(v.word))
@@ -202,7 +203,11 @@ fn varcon_words() -> HashSet<UniCase<&'static str>> {
 
 fn proper_word_variants() -> HashMap<&'static str, HashSet<&'static str>> {
     let mut words: HashMap<&'static str, HashSet<&'static str>> = HashMap::new();
-    for entry in varcon::VARCON.iter().flat_map(|c| c.entries.iter()) {
+    for entry in varcon::VARCON
+        .iter()
+        .filter(|c| c.verified)
+        .flat_map(|c| c.entries.iter())
+    {
         let variants: HashSet<_> = entry
             .variants
             .iter()
@@ -226,7 +231,7 @@ fn find_best_match<'c>(
     #[allow(clippy::single_match)]
     match (typo, correction) {
         // Picking the worst option due to a letter swap being an edit distance of two
-        ("alinging", "aligning") => {
+        ("alinging", "aligning") | ("alingment", "alignment") | ("alingments", "alignments") => {
             return None;
         }
         _ => {}

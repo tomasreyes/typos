@@ -1,84 +1,104 @@
-/// # Panics
-///
-/// - On duplicate entry
 #[cfg(feature = "codegen")]
-pub fn generate_trie<'d, W: std::io::Write, V: std::fmt::Display>(
-    file: &mut W,
-    prefix: &str,
-    value_type: &str,
-    data: impl Iterator<Item = (&'d str, V)>,
-    limit: usize,
-) -> Result<(), std::io::Error> {
-    codegen::generate_trie(file, prefix, value_type, data, limit)
+pub struct TrieGen<'g> {
+    pub(crate) gen: crate::DictGen<'g>,
+    pub(crate) limit: usize,
 }
 
-pub struct DictTrie<V: 'static> {
-    pub root: &'static DictTrieNode<V>,
-    pub unicode: &'static crate::DictTable<V>,
-    pub range: core::ops::RangeInclusive<usize>,
-}
+#[cfg(feature = "codegen")]
+impl TrieGen<'_> {
+    pub fn limit(mut self, limit: usize) -> Self {
+        self.limit = limit;
+        self
+    }
 
-impl<V> DictTrie<V> {
-    pub fn find(&self, word: &'_ unicase::UniCase<&str>) -> Option<&'static V> {
-        if self.range.contains(&word.len()) {
-            let bytes = word.as_bytes();
-
-            let mut child = &self.root;
-            for i in 0..bytes.len() {
-                match child.children {
-                    DictTrieChild::Nested(n) => {
-                        let byte = bytes[i];
-                        let index = if byte.is_ascii_lowercase() {
-                            byte - b'a'
-                        } else if byte.is_ascii_uppercase() {
-                            byte - b'A'
-                        } else {
-                            return self.unicode.find(word);
-                        };
-                        debug_assert!(index < 26);
-                        if let Some(next) = n[index as usize].as_ref() {
-                            child = next;
-                        } else {
-                            return None;
-                        }
-                    }
-                    DictTrieChild::Flat(t) => {
-                        let remaining = &bytes[i..bytes.len()];
-                        // Unsafe: Everything before has been proven to be ASCII, so this should be
-                        // safe.
-                        let remaining = unsafe { core::str::from_utf8_unchecked(remaining) };
-                        // Reuse the prior ascii check, rather than doing it again
-                        let remaining = if word.is_ascii() {
-                            unicase::UniCase::ascii(remaining)
-                        } else {
-                            unicase::UniCase::unicode(remaining)
-                        };
-                        return t.find(&remaining);
-                    }
-                }
-            }
-            child.value.as_ref()
-        } else {
-            None
-        }
+    /// # Panics
+    ///
+    /// - On duplicate entry
+    pub fn write<'d, W: std::io::Write, V: std::fmt::Display>(
+        &self,
+        file: &mut W,
+        data: impl Iterator<Item = (&'d str, V)>,
+    ) -> Result<(), std::io::Error> {
+        let name = self.gen.name;
+        let value_type = self.gen.value_type;
+        codegen::generate_trie(file, name, value_type, data, self.limit)
     }
 }
 
-pub struct DictTrieNode<V: 'static> {
-    pub children: DictTrieChild<V>,
+pub struct Trie<V: 'static> {
+    pub root: &'static TrieNode<V>,
+    pub unicode: &'static crate::OrderedMap<crate::InsensitiveStr<'static>, V>,
+    pub range: core::ops::RangeInclusive<usize>,
+}
+
+impl<V> Trie<V> {
+    #[inline]
+    pub fn find(&self, word: &'_ unicase::UniCase<&str>) -> Option<&'static V> {
+        if word
+            .into_inner()
+            .as_bytes()
+            .iter()
+            .all(|b| b.is_ascii_alphabetic())
+        {
+            if self.range.contains(&word.len()) {
+                self.find_ascii(word.as_bytes())
+            } else {
+                None
+            }
+        } else {
+            self.unicode.find(word)
+        }
+    }
+
+    fn find_ascii(&self, word: &[u8]) -> Option<&'static V> {
+        let mut child = &self.root;
+        for i in 0..word.len() {
+            match child.children {
+                TrieChild::Nested(n) => {
+                    let byte = word[i];
+                    let index = if byte.is_ascii_lowercase() {
+                        byte - b'a'
+                    } else if byte.is_ascii_uppercase() {
+                        byte - b'A'
+                    } else {
+                        return None;
+                    };
+                    debug_assert!(index < 26);
+                    if let Some(next) = n[index as usize].as_ref() {
+                        child = next;
+                    } else {
+                        return None;
+                    }
+                }
+                TrieChild::Flat(t) => {
+                    let remaining = &word[i..word.len()];
+                    // Unsafe: Everything before has been proven to be ASCII, so this should be
+                    // safe.
+                    let remaining = unsafe { core::str::from_utf8_unchecked(remaining) };
+                    let remaining = unicase::Ascii::new(remaining);
+                    return t.find(&remaining);
+                }
+            }
+        }
+        child.value.as_ref()
+    }
+}
+
+pub struct TrieNode<V: 'static> {
+    pub children: TrieChild<V>,
     pub value: Option<V>,
 }
 
-pub enum DictTrieChild<V: 'static> {
-    Nested(&'static [Option<&'static DictTrieNode<V>>; 26]),
-    Flat(&'static crate::DictTable<V>),
+pub enum TrieChild<V: 'static> {
+    Nested(&'static [Option<&'static TrieNode<V>>; 26]),
+    Flat(&'static crate::OrderedMap<crate::InsensitiveAscii<'static>, V>),
 }
 
 #[cfg(feature = "codegen")]
 mod codegen {
     pub(super) fn generate_trie<'d, W: std::io::Write, V: std::fmt::Display>(
         file: &mut W,
-        prefix: &str,
+        name: &str,
         value_type: &str,
         data: impl Iterator<Item = (&'d str, V)>,
         limit: usize,
@@ -86,14 +106,13 @@ mod codegen {
         let mut root = DynRoot::new(data);
         root.burst(limit);
 
-        let unicode_table_name = format!("{}_UNICODE_TABLE", prefix);
+        let unicode_table_name = format!("{name}_UNICODE_TABLE");
 
         writeln!(
             file,
-            "pub static {}_TRIE: dictgen::DictTrie<{}> = dictgen::DictTrie {{",
-            prefix, value_type
+            "pub static {name}: dictgen::Trie<{value_type}> = dictgen::Trie {{"
         )?;
-        writeln!(file, "    root: &{},", gen_node_name(prefix, ""))?;
+        writeln!(file, "    root: &{},", gen_node_name(name, ""))?;
         writeln!(file, "    unicode: &{},", &unicode_table_name)?;
         writeln!(
             file,
@@ -104,22 +123,20 @@ mod codegen {
         writeln!(file, "}};")?;
         writeln!(file)?;
 
-        crate::generate_table(
-            file,
-            &unicode_table_name,
-            value_type,
-            root.unicode.into_iter(),
-        )?;
+        crate::DictGen::new()
+            .name(&unicode_table_name)
+            .value_type(value_type)
+            .ordered_map()
+            .write(file, root.unicode.into_iter())?;
         writeln!(file)?;
 
         let mut nodes = vec![("".to_owned(), &root.root)];
         while let Some((start, node)) = nodes.pop() {
-            let node_name = gen_node_name(prefix, &start);
-            let children_name = gen_children_name(prefix, &start);
+            let node_name = gen_node_name(name, &start);
+            let children_name = gen_children_name(name, &start);
             writeln!(
                 file,
-                "static {}: dictgen::DictTrieNode<{}> = dictgen::DictTrieNode {{",
-                node_name, value_type
+                "static {node_name}: dictgen::TrieNode<{value_type}> = dictgen::TrieNode {{"
             )?;
             writeln!(
                 file,
@@ -128,7 +145,7 @@ mod codegen {
                 children_name
             )?;
             if let Some(value) = node.value.as_ref() {
-                writeln!(file, "    value: Some({}),", value)?;
+                writeln!(file, "    value: Some({value}),")?;
             } else {
                 writeln!(file, "    value: None,")?;
             }
@@ -139,14 +156,13 @@ mod codegen {
                 DynChild::Nested(n) => {
                     writeln!(
                         file,
-                        "static {}: [Option<&dictgen::DictTrieNode<{}>>; 26] = [",
-                        children_name, value_type,
+                        "static {children_name}: [Option<&dictgen::TrieNode<{value_type}>>; 26] = [",
                     )?;
                     for b in b'a'..=b'z' {
                         if let Some(child) = n.get(&b) {
                             let c = b as char;
-                            let next_start = format!("{}{}", start, c);
-                            writeln!(file, "    Some(&{}),", gen_node_name(prefix, &next_start))?;
+                            let next_start = format!("{start}{c}");
+                            writeln!(file, "    Some(&{}),", gen_node_name(name, &next_start))?;
                             nodes.push((next_start, child));
                         } else {
                             writeln!(file, "    None,")?;
@@ -159,7 +175,12 @@ mod codegen {
                         let k = std::str::from_utf8(k).expect("this was originally a `str`");
                         (k, v)
                     });
-                    crate::generate_table(file, &children_name, value_type, table_input)?;
+                    crate::DictGen::new()
+                        .name(&children_name)
+                        .value_type(value_type)
+                        .ordered_map()
+                        .unicode(false)
+                        .write(file, table_input)?;
                 }
             }
             writeln!(file)?;
@@ -171,28 +192,28 @@ mod codegen {
 
     fn gen_node_name(prefix: &str, start: &str) -> String {
         if start.is_empty() {
-            format!("{}_NODE", prefix)
+            format!("{prefix}_NODE")
         } else {
             let mut start = start.to_owned();
             start.make_ascii_uppercase();
-            format!("{}_{}_NODE", prefix, start)
+            format!("{prefix}_{start}_NODE")
         }
     }
 
     fn gen_children_name(prefix: &str, start: &str) -> String {
         if start.is_empty() {
-            format!("{}_CHILDREN", prefix)
+            format!("{prefix}_CHILDREN")
         } else {
             let mut start = start.to_owned();
             start.make_ascii_uppercase();
-            format!("{}_{}_CHILDREN", prefix, start)
+            format!("{prefix}_{start}_CHILDREN")
         }
     }
 
     fn gen_type_name<V>(leaf: &DynChild<'_, V>) -> &'static str {
         match leaf {
-            DynChild::Nested(_) => "dictgen::DictTrieChild::Nested",
-            DynChild::Flat(_) => "dictgen::DictTrieChild::Flat",
+            DynChild::Nested(_) => "dictgen::TrieChild::Nested",
+            DynChild::Flat(_) => "dictgen::TrieChild::Flat",
         }
     }
 
@@ -212,7 +233,7 @@ mod codegen {
             let mut empty = None;
             for (key, value) in data {
                 if existing.contains(key) {
-                    panic!("Duplicate present: {}", key);
+                    panic!("Duplicate present: {key}");
                 }
                 existing.insert(key);
 
@@ -248,7 +269,7 @@ mod codegen {
         value: Option<V>,
     }
 
-    impl<'s, V> DynNode<'s, V> {
+    impl<V> DynNode<'_, V> {
         fn burst(&mut self, limit: usize) {
             self.children.burst(limit);
         }
@@ -259,7 +280,7 @@ mod codegen {
         Flat(Vec<(&'s [u8], V)>),
     }
 
-    impl<'s, V> DynChild<'s, V> {
+    impl<V> DynChild<'_, V> {
         fn burst(&mut self, limit: usize) {
             match self {
                 DynChild::Nested(children) => {

@@ -1,12 +1,13 @@
 #![allow(clippy::needless_update)]
 
 use std::io::Write as _;
-use std::sync::atomic;
+use std::sync::{atomic, Mutex};
 
 use anstream::stdout;
-use unicode_width::UnicodeWidthStr;
-
+use serde_sarif::sarif;
+use serde_sarif::sarif::{ArtifactChange, ArtifactContent, Fix, Replacement};
 use typos_cli::report::{Context, Message, Report, Typo};
+use unicode_width::UnicodeWidthStr;
 
 const ERROR: anstyle::Style = anstyle::AnsiColor::BrightRed.on_default();
 const INFO: anstyle::Style = anstyle::AnsiColor::BrightBlue.on_default();
@@ -36,7 +37,7 @@ impl<'r> MessageStatus<'r> {
     }
 }
 
-impl<'r> Report for MessageStatus<'r> {
+impl Report for MessageStatus<'_> {
     fn report(&self, msg: Message<'_>) -> Result<(), std::io::Error> {
         if msg.is_typo() {
             self.typos_found.store(true, atomic::Ordering::Relaxed);
@@ -45,6 +46,10 @@ impl<'r> Report for MessageStatus<'r> {
             self.errors_found.store(true, atomic::Ordering::Relaxed);
         }
         self.reporter.report(msg)
+    }
+
+    fn generate_final_result(&self) -> Result<(), std::io::Error> {
+        self.reporter.generate_final_result()
     }
 }
 
@@ -63,7 +68,7 @@ impl Report for PrintBrief {
     fn report(&self, msg: Message<'_>) -> Result<(), std::io::Error> {
         match &msg {
             Message::BinaryFile(msg) => {
-                log::info!("{}", msg);
+                log::info!("{msg}");
             }
             Message::Typo(msg) => print_brief_correction(msg)?,
             Message::FileType(msg) => {
@@ -97,7 +102,7 @@ impl Report for PrintLong {
     fn report(&self, msg: Message<'_>) -> Result<(), std::io::Error> {
         match &msg {
             Message::BinaryFile(msg) => {
-                log::info!("{}", msg);
+                log::info!("{msg}");
             }
             Message::Typo(msg) => print_long_correction(msg)?,
             Message::FileType(msg) => {
@@ -153,7 +158,7 @@ fn print_brief_correction(msg: &Typo<'_>) -> Result<(), std::io::Error> {
                 context_display(&msg.context),
                 msg.typo,
                 itertools::join(
-                    corrections.iter().map(|s| format!("`{good}{}{reset}`", s)),
+                    corrections.iter().map(|s| format!("`{good}{s}{reset}`")),
                     ", "
                 )
             )?;
@@ -192,7 +197,7 @@ fn print_long_correction(msg: &Typo<'_>) -> Result<(), std::io::Error> {
                 "{error}error{reset}: `{error}{}{reset}` should be {}",
                 msg.typo,
                 itertools::join(
-                    corrections.iter().map(|s| format!("`{good}{}{reset}`", s)),
+                    corrections.iter().map(|s| format!("`{good}{s}{reset}`")),
                     ", "
                 )
             )?;
@@ -280,6 +285,225 @@ impl Report for PrintJson {
     }
 }
 
+#[derive(Debug)]
+pub(crate) struct PrintSarif {
+    results: Mutex<Vec<sarif::Result>>,
+    error: Mutex<Vec<String>>,
+}
+
+impl Default for PrintSarif {
+    fn default() -> Self {
+        Self {
+            results: Mutex::new(Vec::new()),
+            error: Mutex::new(Vec::new()),
+        }
+    }
+}
+
+impl Report for PrintSarif {
+    fn report(&self, msg: Message<'_>) -> Result<(), std::io::Error> {
+        self.report_sarif(msg).map_err(sarif_error_mapper)
+    }
+
+    fn generate_final_result(&self) -> Result<(), std::io::Error> {
+        self.generate_final_result().map_err(sarif_error_mapper)
+    }
+}
+
+impl PrintSarif {
+    fn report_sarif(&self, msg: Message<'_>) -> Result<(), Box<dyn std::error::Error>> {
+        match &msg {
+            Message::Typo(msg) => {
+                if msg.corrections.is_valid() {
+                    return Ok(());
+                }
+                let message = type_to_sarif_message(msg).unwrap();
+                let location = typo_to_sarif_location(msg)?;
+
+                let fix =
+                    typo_to_sarif_fix(message.clone(), msg.corrections.clone(), location.clone())?;
+                let result = typo_to_sarif_result(message, location, fix)?;
+
+                self.results.lock().unwrap().push(result);
+            }
+            Message::Error(msg) => {
+                self.error.lock().unwrap().push(msg.msg.clone());
+            }
+            Message::BinaryFile(_) => {}
+            Message::Parse(_) | Message::FileType(_) | Message::File(_) => {}
+            _ => unimplemented!("New message {:?}", msg),
+        }
+
+        Ok(())
+    }
+
+    fn generate_final_result(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let tool = sarif::Tool::builder()
+            .driver(
+                sarif::ToolComponent::builder()
+                    .name("typos")
+                    .information_uri(env!("CARGO_PKG_REPOSITORY"))
+                    .build(),
+            )
+            .build();
+
+        let run_builder = sarif::Run::builder()
+            .tool(tool)
+            .column_kind(sarif::ResultColumnKind::UnicodeCodePoints.to_string())
+            .results(self.results.lock().unwrap().clone());
+
+        let run = if !self.error.lock().unwrap().is_empty() {
+            let invocations = self
+                .error
+                .lock()
+                .unwrap()
+                .iter()
+                .map(|x| {
+                    sarif::Invocation::builder()
+                        .execution_successful(false)
+                        .process_start_failure_message(x.clone())
+                        .build()
+                })
+                .collect::<Vec<_>>();
+
+            let run_builder = run_builder.invocations(invocations);
+            run_builder.build()
+        } else {
+            run_builder.build()
+        };
+
+        let sarif_builder = sarif::Sarif::builder()
+            .version(sarif::Version::V2_1_0.to_string())
+            .schema(sarif::SCHEMA_URL)
+            .runs(vec![run]);
+
+        let sarif = sarif_builder.build();
+
+        serde_json::to_writer_pretty(stdout().lock(), &sarif)?;
+
+        Ok(())
+    }
+}
+
+fn sarif_error_mapper(error: impl std::fmt::Display) -> std::io::Error {
+    std::io::Error::new(
+        std::io::ErrorKind::Other,
+        format!("failed to generate SARIF output: {error}"),
+    )
+}
+
+fn typo_to_sarif_result(
+    message: String,
+    location: sarif::Location,
+    fix: Option<Fix>,
+) -> Result<sarif::Result, Box<dyn std::error::Error>> {
+    let mut result = sarif::Result::builder()
+        .level(sarif::ResultLevel::Error.to_string())
+        .message(sarif::Message::builder().markdown(message).build())
+        .locations(vec![location])
+        .build();
+    if let Some(fix) = fix {
+        result.fixes = Some(vec![fix]);
+    }
+    Ok(result)
+}
+
+fn typo_to_sarif_fix(
+    message: String,
+    correct: typos::Status<'_>,
+    location: sarif::Location,
+) -> Result<Option<Fix>, Box<dyn std::error::Error>> {
+    let physical_location = location.physical_location.unwrap();
+    let Some(region) = physical_location.region else {
+        return Ok(None);
+    };
+
+    let mut replacements = vec![];
+
+    match correct {
+        typos::Status::Corrections(corrections) => {
+            for correction in corrections.iter() {
+                replacements.push(
+                    Replacement::builder()
+                        .deleted_region(region.clone())
+                        .inserted_content(
+                            ArtifactContent::builder().text(correction.clone()).build(),
+                        )
+                        .build(),
+                );
+            }
+        }
+        _ => return Ok(None),
+    }
+
+    let change = ArtifactChange::builder()
+        .artifact_location(physical_location.artifact_location.unwrap())
+        .replacements(replacements)
+        .build();
+
+    let fix = Fix::builder()
+        .description(sarif::Message::builder().markdown(message).build())
+        .artifact_changes(vec![change])
+        .build();
+
+    Ok(Some(fix))
+}
+
+fn type_to_sarif_message(msg: &Typo<'_>) -> Option<String> {
+    match &msg.corrections {
+        typos::Status::Valid => None,
+        typos::Status::Invalid => Some(format!("`{}` is disallowed", msg.typo)),
+        typos::Status::Corrections(corrections) => Some(format!(
+            "`{}` should be {}",
+            msg.typo,
+            itertools::join(corrections.iter().map(|s| format!("`{s}`")), ", ",)
+        )),
+    }
+}
+
+fn typo_to_sarif_location(msg: &Typo<'_>) -> Result<sarif::Location, Box<dyn std::error::Error>> {
+    let path = match &msg.context {
+        Some(Context::File(ctx)) => ctx.path,
+        Some(Context::Path(ctx)) => ctx.path,
+        None => std::path::Path::new(""),
+        _ => unimplemented!("New context {:?}", msg),
+    };
+
+    let artifact = sarif::ArtifactLocation::builder()
+        .uri(
+            path.display()
+                .to_string()
+                .replace(std::path::MAIN_SEPARATOR, "/"),
+        )
+        .build();
+    let physical = sarif::PhysicalLocation::builder().artifact_location(artifact);
+
+    if let Some(Context::File(context)) = &msg.context {
+        let start = String::from_utf8_lossy(&msg.buffer[0..msg.byte_offset]);
+        let column_start = start.chars().count() + 1;
+        let column_end = msg.typo.chars().count() + column_start;
+        let line_num = context.line_num;
+
+        let physical = physical.region(
+            sarif::Region::builder()
+                .start_line(line_num as i64)
+                .end_line(line_num as i64)
+                .start_column(column_start as i64)
+                .end_column(column_end as i64)
+                .build(),
+        );
+        let location = sarif::Location::builder()
+            .physical_location(physical.build())
+            .build();
+        Ok(location)
+    } else {
+        let location = sarif::Location::builder()
+            .physical_location(physical.build())
+            .build();
+        Ok(location)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -305,7 +529,7 @@ mod tests {
         ];
         for (i, ch) in latin_cyrillic_chars.iter().enumerate() {
             let width = calculate_visible_column_width(ch);
-            assert_eq!(1, width, "latin_cyrillic[{}]: {}", i, ch,);
+            assert_eq!(1, width, "latin_cyrillic[{i}]: {ch}",);
         }
     }
 
@@ -319,7 +543,7 @@ mod tests {
         ];
         for (i, ch) in cjk_chars.iter().enumerate() {
             let width = calculate_visible_column_width(ch);
-            assert_eq!(2, width, "cjk[{}]: {}", i, ch);
+            assert_eq!(2, width, "cjk[{i}]: {ch}");
         }
     }
 
@@ -340,7 +564,7 @@ mod tests {
         ];
         for (i, ch) in simple_emojis.iter().enumerate() {
             let width = calculate_visible_column_width(ch);
-            assert_eq!(2, width, "emoji[{}]: {}", i, ch);
+            assert_eq!(2, width, "emoji[{i}]: {ch}");
         }
     }
 
@@ -348,11 +572,11 @@ mod tests {
     fn test_calculate_visible_column_width_zwj_sequences() {
         let zwj_sequences = [
             "😵‍💫", /* U+1F635 U+200D U+1F4AB */
-            "👁️‍🗨️",   /* U+1F441 U+FE0F U+200D U+1F5E8 U+FE0F */
+            "👁️‍🗨️", /* U+1F441 U+FE0F U+200D U+1F5E8 U+FE0F */
         ];
         for (i, ch) in zwj_sequences.iter().enumerate() {
             let width = calculate_visible_column_width(ch);
-            assert_eq!(2, width, "zwj[{}]: {}", i, ch);
+            assert_eq!(2, width, "zwj[{i}]: {ch}");
         }
     }
 }
